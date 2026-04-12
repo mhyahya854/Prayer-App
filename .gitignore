@@ -1,0 +1,11 @@
+node_modules
+dist
+.expo
+coverage
+artifacts
+*.log
+*.tsbuildinfo
+apps/*/node_modules
+apps/*/.expo
+apps/*/dist-web
+packages/*/dist

@@ -1,41 +1,44 @@
 {
-  "name": "prayer-app",
-  "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
-  "overrides": {
-    "micromatch": {
-      "picomatch": "2.3.2"
-    },
-    "anymatch": {
-      "picomatch": "2.3.2"
-    },
-    "jest-util": {
-      "picomatch": "2.3.2"
-    }
-  },
-  "devDependencies": {
-    "archiver": "^7.0.1",
-    "extract-zip": "^2.0.1",
-    "tsx": "^4.21.0"
-  },
-  "scripts": {
-    "android": "npm run android --workspace @prayer-app/android",
-    "ios": "npm run ios --workspace @prayer-app/ios",
-    "web": "npm run web --workspace @prayer-app/web",
-    "api": "npm run dev --workspace @prayer-app/api",
-    "clean": "node ./scripts/clean-workspace.mjs",
-    "build:core": "npm run build --workspace @prayer-app/core",
-    "generate:content-seeds": "node ./scripts/generate-content-seeds.mjs",
-    "pack:source": "node ./scripts/pack-source.mjs",
-    "test:core": "npm run test --workspace @prayer-app/core",
-    "test:android": "npm run test --workspace @prayer-app/android",
-    "test:ios": "npm run test --workspace @prayer-app/ios",
-    "test:web": "npm run test --workspace @prayer-app/web",
-    "test:api": "npm run test --workspace @prayer-app/api",
-    "typecheck": "npm run build --workspace @prayer-app/core && npm run typecheck --workspace @prayer-app/core && npm run typecheck --workspace @prayer-app/android && npm run typecheck --workspace @prayer-app/ios && npm run typecheck --workspace @prayer-app/web && npm run typecheck --workspace @prayer-app/api",
-    "verify:fresh": "node ./scripts/verify-fresh.mjs"
-  }
+    "name":  "prayer-app",
+    "overrides":  {
+                      "jest-util":  {
+                                        "picomatch":  "2.3.2"
+                                    },
+                      "micromatch":  {
+                                         "picomatch":  "2.3.2"
+                                     },
+                      "anymatch":  {
+                                       "picomatch":  "2.3.2"
+                                   }
+                  },
+    "scripts":  {
+                    "test:android":  "npm run test --workspace @prayer-app/android",
+                    "ios":  "npm run ios --workspace @prayer-app/ios",
+                    "build:core":  "npm run build --workspace @prayer-app/core",
+                    "generate:content-seeds":  "node ./scripts/generate-content-seeds.mjs",
+                    "android":  "npm run android --workspace @prayer-app/android",
+                    "test:core":  "npm run test --workspace @prayer-app/core",
+                    "pack:source":  "node ./scripts/pack-source.mjs",
+                    "test:ios":  "npm run test --workspace @prayer-app/ios",
+                    "clean":  "node ./scripts/clean-workspace.mjs",
+                    "verify:fresh":  "node ./scripts/verify-fresh.mjs",
+                    "api":  "npm run dev --workspace @prayer-app/api",
+                    "test:web":  "npm run test --workspace @prayer-app/web",
+                    "typecheck":  "npm run build --workspace @prayer-app/core \u0026\u0026 npm run typecheck --workspace @prayer-app/core \u0026\u0026 npm run typecheck --workspace @prayer-app/android \u0026\u0026 npm run typecheck --workspace @prayer-app/ios \u0026\u0026 npm run typecheck --workspace @prayer-app/web \u0026\u0026 npm run typecheck --workspace @prayer-app/api",
+                    "test:api":  "npm run test --workspace @prayer-app/api",
+                    "web":  "npm run web --workspace @prayer-app/web"
+                },
+    "devDependencies":  {
+                            "tsx":  "^4.21.0",
+                            "archiver":  "^7.0.1",
+                            "extract-zip":  "^2.0.1"
+                        },
+    "workspaces":  [
+                       "android",
+                       "ios",
+                       "web",
+                       "api",
+                       "packages/*"
+                   ],
+    "private":  true
 }

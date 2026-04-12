@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Prayer App iOS",
+    "slug": "prayer-app-ios",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "prayerappios",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#10261F"
+    },
+    "ios": {
+      "bundleIdentifier": "com.prayerapp.ios",
+      "buildNumber": "1",
+      "supportsTablet": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Prayer App to use your location to calculate accurate prayer times for your area."
+        }
+      ],
+      "expo-audio",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/athan.wav",
+            "./assets/sounds/reminder.wav"
+          ]
+        }
+      ],
+      "expo-sqlite",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

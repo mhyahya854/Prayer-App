@@ -95,14 +95,12 @@ export default function QuranScreen() {
   if (!isReady && !error) {
     return (
       <ScrollView style={[styles.screen, { backgroundColor: palette.background }]} contentContainerStyle={styles.content}>
-        <SectionCard title="Preparing Quran library" subtitle="Loading offline content">
-          <View style={styles.loadingState}>
-            <ActivityIndicator color={palette.accent} />
-            <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-              Loading the offline Quran library and your saved reading state.
-            </Text>
-          </View>
-        </SectionCard>
+        <View style={styles.loadingState}>
+          <ActivityIndicator color={palette.accent} size="large" />
+          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
+            Preparing your Quran
+          </Text>
+        </View>
       </ScrollView>
     );
   }
@@ -116,7 +114,7 @@ export default function QuranScreen() {
       <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
         <Text style={[styles.title, { color: palette.text }]}>Quran</Text>
         <Text style={[styles.copy, { color: palette.text }]}>
-          Offline reader with search, bookmarks, and last read.
+          Read, search, and save verses.
         </Text>
         {lastRead ? (
           <>
@@ -128,7 +126,7 @@ export default function QuranScreen() {
               onPress={() => openChapter(lastRead.chapterId, lastRead.verseId)}
               style={[styles.primaryButton, { backgroundColor: palette.accent }]}
             >
-              <Text style={[styles.primaryButtonLabel, { color: palette.surface }]}>Resume reading</Text>
+              <Text style={[styles.primaryButtonLabel, { color: palette.surface }]}>Continue reading</Text>
             </Pressable>
           </>
         ) : (
@@ -137,7 +135,7 @@ export default function QuranScreen() {
             onPress={() => openChapter(1)}
             style={[styles.primaryButton, { backgroundColor: palette.accent }]}
           >
-            <Text style={[styles.primaryButtonLabel, { color: palette.surface }]}>Start with Al-Fatihah</Text>
+            <Text style={[styles.primaryButtonLabel, { color: palette.surface }]}>Begin with Al-Fatihah</Text>
           </Pressable>
         )}
       </View>
@@ -159,11 +157,11 @@ export default function QuranScreen() {
           value={searchQuery}
         />
         {isSearching ? (
-          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Searching local verses...</Text>
+          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Searching…</Text>
         ) : null}
         {!isSearching && searchQuery.trim() && searchResults.length === 0 ? (
           <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-            No matches found in the local library.
+            No results found.
           </Text>
         ) : null}
         {searchResults.map((result) => (
@@ -251,15 +249,10 @@ export default function QuranScreen() {
         ))}
       </SectionCard>
 
-      <SectionCard title="Notes" subtitle="Source and scope">
-        <Text style={[styles.helperCopy, { color: palette.text }]}>
-          {quranSource.collection} from {quranSource.name} {quranSource.version}. Audio, tafsir, and notes are still future work.
-        </Text>
-        <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-          License: {quranSource.license}
-        </Text>
-        {error ? <Text style={[styles.helperCopy, { color: palette.text }]}>{error}</Text> : null}
-      </SectionCard>
+      <Text style={[styles.attribution, { color: palette.subtleText }]}>
+        {quranSource.collection} · {quranSource.name} {quranSource.version} · {quranSource.license}
+      </Text>
+      {error ? <Text style={[styles.helperCopy, { color: palette.danger }]}>{error}</Text> : null}
     </ScrollView>
   );
 }
@@ -404,6 +397,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     justifyContent: 'center',
-    paddingVertical: 22,
+    paddingVertical: 40,
+    flex: 1,
+  },
+  attribution: {
+    fontSize: 11,
+    lineHeight: 18,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    opacity: 0.6,
   },
 });

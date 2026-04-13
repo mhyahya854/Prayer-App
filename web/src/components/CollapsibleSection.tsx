@@ -15,8 +15,8 @@ export function CollapsibleSection({ children, title, subtitle, defaultExpanded 
 
   return (
     <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-      <Pressable 
-        style={[styles.header, expanded && styles.headerExpanded]} 
+      <Pressable
+        style={[styles.header, expanded && styles.headerExpanded]}
         onPress={() => setExpanded(!expanded)}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
@@ -25,8 +25,9 @@ export function CollapsibleSection({ children, title, subtitle, defaultExpanded 
           <Text style={[styles.title, { color: palette.text }]}>{title}</Text>
           {subtitle ? <Text style={[styles.subtitle, { color: palette.subtleText }]}>{subtitle}</Text> : null}
         </View>
+        {/* Use safe ASCII-range chevron characters that render universally */}
         <Text style={[styles.chevron, { color: palette.subtleText }]}>
-          {expanded ? '?' : '?'}
+          {expanded ? '\u2303' : '\u2304'}
         </Text>
       </Pressable>
       {expanded ? <View style={styles.body}>{children}</View> : null}
@@ -37,8 +38,8 @@ export function CollapsibleSection({ children, title, subtitle, defaultExpanded 
 const styles = StyleSheet.create({
   card: {
     borderRadius: 22,
-    borderWidth: 1,
-    padding: 16,
+    borderWidth: 0.5,
+    padding: 18,
     overflow: 'hidden',
   },
   header: {
@@ -63,8 +64,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   chevron: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '400',
     paddingLeft: 12,
   },
   body: {

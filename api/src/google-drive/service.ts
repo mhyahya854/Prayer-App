@@ -21,7 +21,7 @@ const googleTokenUrl = 'https://oauth2.googleapis.com/token';
 const googleUserInfoUrl = 'https://openidconnect.googleapis.com/v1/userinfo';
 const driveApiBaseUrl = 'https://www.googleapis.com/drive/v3/files';
 const driveUploadBaseUrl = 'https://www.googleapis.com/upload/drive/v3/files';
-const googleDriveScope = 'https://www.googleapis.com/auth/drive.appdata';
+const googleDriveScope = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file';
 const googleIdentityScopes = ['openid', 'email', 'profile'];
 const backupFileName = 'prayer-app-backup.json';
 const authStateLifetimeMs = 10 * 60_000;
@@ -348,6 +348,91 @@ export class GoogleDriveService {
       fileId: uploadedFile.id,
       modifiedAt: uploadedFile.modifiedTime,
     };
+  }
+
+  async exportDocument(
+    sessionToken: string,
+    params: { folderName: string; fileName: string; content: string; mimeType: string },
+  ) {
+    const session = await this.requireSession(sessionToken);
+    const accessToken = await this.refreshAccessToken(session.account.refreshToken);
+    const folderId = await this.findOrCreateFolder(accessToken, params.folderName);
+    
+    // Check if file already exists in folder
+    const fileQuery = encodeURIComponent(`name='${params.fileName}' and '${folderId}' in parents and trashed=false`);
+    const fileSearchResponse = await fetch(
+      `${driveApiBaseUrl}?fields=files(id)&pageSize=1&q=${fileQuery}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    await ensureGoogleResponse(fileSearchResponse, 'Unable to search for existing exported document.');
+    const fileSearchPayload = (await fileSearchResponse.json()) as { files?: Array<{ id: string }> };
+    const existingFileId = fileSearchPayload.files?.[0]?.id;
+
+    // Use multipart/related to upload metadata and content together
+    const boundary = `export-${Date.now().toString(36)}`;
+    const metadata = existingFileId ? {} : { name: params.fileName, parents: [folderId] };
+    const body = [
+      `--${boundary}`,
+      'Content-Type: application/json; charset=UTF-8',
+      '',
+      JSON.stringify(metadata),
+      `--${boundary}`,
+      `Content-Type: ${params.mimeType}`,
+      '',
+      params.content,
+      `--${boundary}--`,
+    ].join('\r\n');
+
+    const response = await fetch(
+      existingFileId
+        ? `${driveUploadBaseUrl}/${existingFileId}?uploadType=multipart&fields=id,webViewLink`
+        : `${driveUploadBaseUrl}?uploadType=multipart&fields=id,webViewLink`,
+      {
+        body,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`,
+        },
+        method: existingFileId ? 'PATCH' : 'POST',
+      },
+    );
+    await ensureGoogleResponse(response, 'Unable to export document to Google Drive.');
+
+    const result = (await response.json()) as { id: string; webViewLink?: string };
+    return { fileId: result.id, webViewLink: result.webViewLink };
+  }
+
+  private async findOrCreateFolder(accessToken: string, folderName: string) {
+    const query = encodeURIComponent(`name='${folderName}' and mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false`);
+    const response = await fetch(
+      `${driveApiBaseUrl}?fields=files(id)&pageSize=1&q=${query}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    await ensureGoogleResponse(response, 'Unable to list Drive visible folders.');
+
+    const payload = (await response.json()) as { files?: Array<{ id: string }> };
+    const existingFolder = payload.files?.[0];
+
+    if (existingFolder) {
+      return existingFolder.id;
+    }
+
+    const createResponse = await fetch(driveApiBaseUrl, {
+      body: JSON.stringify({
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: ['root'],
+      }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    });
+    await ensureGoogleResponse(createResponse, 'Unable to create visible Drive folder.');
+
+    const createdFolder = (await createResponse.json()) as { id: string };
+    return createdFolder.id;
   }
 
   private async findBackupFile(accessToken: string) {

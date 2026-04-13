@@ -293,6 +293,18 @@ export interface GoogleDriveBackupUpsertResponse {
   modifiedAt: string;
 }
 
+export interface GoogleDriveExportDocumentRequest {
+  folderName: string;
+  fileName: string;
+  content: string;
+  mimeType: string;
+}
+
+export interface GoogleDriveExportDocumentResponse {
+  fileId: string;
+  webViewLink?: string;
+}
+
 export interface OverviewResponse {
   overview: AppOverview;
   modules: CoreModule[];

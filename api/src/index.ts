@@ -19,7 +19,7 @@ import Fastify, { type FastifyReply } from 'fastify';
 import { z } from 'zod';
 
 import { apiConfig, apiConfigValidationErrors, runtimeStatus } from './config';
-import { googleDriveAuthCompleteBodySchema, googleDriveAuthStartBodySchema, googleDriveBackupUpsertBodySchema } from './google-drive/schema';
+import { googleDriveAuthCompleteBodySchema, googleDriveAuthStartBodySchema, googleDriveBackupUpsertBodySchema, googleDriveExportDocumentBodySchema } from './google-drive/schema';
 import { buildRedirectUrl, GoogleDriveService } from './google-drive/service';
 import { createGoogleDriveAuthStore } from './google-drive/store';
 import { createNotificationService, type NotificationService } from './notifications/service';
@@ -577,6 +577,39 @@ export function buildServer(options?: {
             error instanceof Error && error.message.includes('no longer available') ? 401 : 502,
             'google_drive_backup_upsert_failed',
             error instanceof Error ? error.message : 'Unable to update the Drive backup.',
+          );
+          return;
+        }
+      });
+
+      api.post('/google/drive/export-document', async (request, reply) => {
+        const sessionToken = getSessionTokenFromHeaders(request.headers as Record<string, unknown>);
+
+        if (!sessionToken) {
+          sendApiError(reply, 401, 'missing_google_session', 'Google session token is required.');
+          return;
+        }
+
+        const bodyResult = googleDriveExportDocumentBodySchema.safeParse(request.body);
+        if (!bodyResult.success) {
+          sendApiError(
+            reply,
+            400,
+            'invalid_google_drive_export_payload',
+            'Invalid document export payload.',
+            bodyResult.error.flatten().fieldErrors,
+          );
+          return;
+        }
+
+        try {
+          return await googleDriveService.exportDocument(sessionToken, bodyResult.data);
+        } catch (error) {
+          sendApiError(
+            reply,
+            error instanceof Error && error.message.includes('no longer available') ? 401 : 502,
+            'google_drive_export_failed',
+            error instanceof Error ? error.message : 'Unable to export document to Drive.',
           );
           return;
         }

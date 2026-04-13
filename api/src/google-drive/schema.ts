@@ -91,3 +91,10 @@ export const googleDriveAuthCompleteBodySchema = z.object({
 export const googleDriveBackupUpsertBodySchema = z.object({
   backup: prayerAppBackupPayloadSchema,
 });
+
+export const googleDriveExportDocumentBodySchema = z.object({
+  folderName: z.string().trim().min(1),
+  fileName: z.string().trim().min(1),
+  content: z.string().trim().min(1),
+  mimeType: z.string().trim().min(1),
+});

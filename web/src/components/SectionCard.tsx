@@ -25,9 +25,9 @@ export function SectionCard({ children, title, subtitle }: SectionCardProps) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 22,
-    borderWidth: 1,
+    borderWidth: 0.5,
     gap: 10,
-    padding: 16,
+    padding: 18,
   },
   header: {
     gap: 3,

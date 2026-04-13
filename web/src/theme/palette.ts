@@ -2,32 +2,40 @@ import { DarkTheme, DefaultTheme, type Theme } from '@react-navigation/native';
 
 import { useResolvedTheme } from '@/src/theme/theme-provider';
 
+// "Quiet celestial minimalism" — deep navy / warm gold / moonlit ivory
 const lightPalette = {
-  background: '#F6F1E7',
-  surface: '#FCF8F2',
-  card: '#F5EEE3',
-  hero: '#EEE4D4',
-  highlight: '#EFF3EC',
-  border: '#E3D7C6',
-  text: '#18231E',
-  subtleText: '#66716C',
-  accent: '#47685A',
-  accentSoft: '#E4ECE6',
-  successSoft: '#E7EEE2',
+  background: '#F4F0E8',
+  surface: '#FDFAF5',
+  card: '#F0EBE0',
+  hero: '#E8E1D4',
+  highlight: '#ECE9E1',
+  border: '#D8D0C4',
+  text: '#1A2030',
+  subtleText: '#6B778A',
+  accent: '#8B6F4E',
+  accentSoft: '#EDE3D5',
+  successSoft: '#E2EDE8',
+  gold: '#7A5C3A',
+  danger: '#D9534F',
+  success: '#3A8C5C',
 };
 
+// Dark palette — primary brand experience
 const darkPalette = {
-  background: '#0D1713',
-  surface: '#141F1A',
-  card: '#19251F',
-  hero: '#1D2B24',
-  highlight: '#1A2620',
-  border: '#2A3832',
-  text: '#F3EDE2',
-  subtleText: '#A7B5AF',
-  accent: '#87B39C',
-  accentSoft: '#24352D',
-  successSoft: '#22322A',
+  background: '#0B1120',
+  surface: '#111828',
+  card: '#16202F',
+  hero: '#1B2A3E',
+  highlight: '#1C2E42',
+  border: '#243347',
+  text: '#EDE8DC',
+  subtleText: '#8A99B0',
+  accent: '#C9A96E',
+  accentSoft: '#2A2218',
+  successSoft: '#182C22',
+  gold: '#C9A96E',
+  danger: '#E87070',
+  success: '#5BC87A',
 };
 
 export type Palette = typeof lightPalette;

@@ -14,6 +14,7 @@ export interface QuranSeedVerse {
   text: string;
   translation: string;
   transliteration: string;
+  explanation?: string | null;
 }
 
 export interface QuranSeedChapter {
@@ -74,6 +75,7 @@ export interface QuranSavedVerse {
   chapterTransliteration: string;
   translation: string;
   transliteration: string;
+  explanation?: string | null;
   updatedAt: string;
   verseId: number;
 }
@@ -89,6 +91,7 @@ export interface QuranVerse {
   isLastRead: boolean;
   translation: string;
   transliteration: string;
+  explanation?: string | null;
   verseId: number;
 }
 

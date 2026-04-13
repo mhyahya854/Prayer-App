@@ -2,10 +2,13 @@ import { useLocalSearchParams, Stack } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
 
+import * as WebBrowser from 'expo-web-browser';
+
 import { SectionCard } from '@/src/components/SectionCard';
 import { useContentData } from '@/src/content/content-provider';
 import type { QuranChapterDetail } from '@/src/content/types';
 import { useAppPalette } from '@/src/theme/palette';
+import { useGoogleDriveSync } from '@/src/sync/google-drive-sync-provider';
 
 export default function QuranChapterScreen() {
   const palette = useAppPalette();
@@ -13,8 +16,11 @@ export default function QuranChapterScreen() {
   const parsedChapterId = Number(chapterId);
   const requestedVerseId = verseId ? Number(verseId) : null;
   const { getQuranChapterDetail, isReady, setQuranLastRead, toggleQuranBookmark } = useContentData();
+  const { exportDocument } = useGoogleDriveSync();
   const [chapterDetail, setChapterDetail] = useState<QuranChapterDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportUrl, setExportUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -86,6 +92,39 @@ export default function QuranChapterScreen() {
     );
   }
 
+  async function handleExportSurah() {
+    if (!chapterDetail || isExporting) return;
+    setIsExporting(true);
+    setExportUrl(null);
+    setError(null);
+    
+    try {
+      const markdown = `# ${chapterDetail.transliteration} (${chapterDetail.arabicName})\n\n${chapterDetail.translation}\nRevelation Type: ${chapterDetail.type}\nTotal Ayahs: ${chapterDetail.totalVerses}\n\n---\n\n` + 
+        chapterDetail.verses.map(v => 
+          `### Ayah ${v.verseId}\n\n**${v.arabicText}**\n\n_${v.transliteration}_\n\n${v.translation}${v.explanation ? `\n\n**Tafsir:**\n${v.explanation}` : ''}`
+        ).join('\n\n---\n\n');
+        
+      const response = await exportDocument(
+        'Prayer App Study',
+        `${chapterDetail.transliteration}.md`,
+        markdown,
+        'text/markdown'
+      );
+      
+      if (response?.webViewLink) {
+        setExportUrl(response.webViewLink);
+      } else if (response?.fileId) {
+        setExportUrl(`https://drive.google.com/file/d/${response.fileId}/view`);
+      } else {
+        setError('Failed to export. Note: This feature requires signing back into Google Drive to grant visible folder permissions.');
+      }
+    } catch (err) {
+      setError('An error occurred during export.');
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <>
       <Stack.Screen options={{ title: chapterDetail?.transliteration ?? 'Quran Reader' }} />
@@ -115,6 +154,27 @@ export default function QuranChapterScreen() {
               {requestedVerseId ? (
                 <Text style={[styles.copy, { color: palette.text }]}>Opened from search at verse {requestedVerseId}.</Text>
               ) : null}
+
+              {exportUrl ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void WebBrowser.openBrowserAsync(exportUrl)}
+                  style={[styles.primaryButton, { backgroundColor: palette.accentSoft, borderColor: palette.accent }]}
+                >
+                  <Text style={[styles.primaryButtonLabel, { color: palette.accent }]}>Open in Google Drive</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void handleExportSurah()}
+                  disabled={isExporting}
+                  style={[styles.primaryButton, { backgroundColor: isExporting ? palette.surface : palette.accent, borderColor: isExporting ? palette.border : palette.accent }]}
+                >
+                  <Text style={[styles.primaryButtonLabel, { color: isExporting ? palette.subtleText : palette.surface }]}>
+                    {isExporting ? 'Exporting...' : 'Export Notes to Google Drive'}
+                  </Text>
+                </Pressable>
+              )}
             </View>
 
             <SectionCard title="Reader" subtitle="Resume later or save a verse">
@@ -152,6 +212,13 @@ export default function QuranChapterScreen() {
                     <Text style={[styles.arabicVerse, { color: palette.text }]}>{verse.arabicText}</Text>
                     <Text style={[styles.transliteration, { color: palette.subtleText }]}>{verse.transliteration}</Text>
                     <Text style={[styles.translation, { color: palette.text }]}>{verse.translation}</Text>
+
+                    {verse.explanation ? (
+                      <View style={[styles.explanationBlock, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                        <Text style={[styles.explanationLabel, { color: palette.accent }]}>Tafsir</Text>
+                        <Text style={[styles.explanationText, { color: palette.text }]}>{verse.explanation}</Text>
+                      </View>
+                    ) : null}
 
                     <View style={styles.actionRow}>
                       <Pressable
@@ -226,6 +293,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
   },
+  primaryButton: {
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  primaryButtonLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   verseCard: {
     borderRadius: 18,
     borderWidth: 1,
@@ -266,6 +345,23 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   translation: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  explanationBlock: {
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 6,
+    marginTop: 4,
+    padding: 14,
+  },
+  explanationLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  explanationText: {
     fontSize: 14,
     lineHeight: 22,
   },

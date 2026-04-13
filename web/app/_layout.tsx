@@ -70,7 +70,7 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="auth-complete" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Build Plan' }} />
+        {/* modal route intentionally removed from product experience */}
       </Stack>
     </ThemeProvider>
   );

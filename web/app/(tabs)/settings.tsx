@@ -6,21 +6,19 @@ import {
   prayerAdjustmentOptions,
 } from '@prayer-app/core';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Link } from 'expo-router';
 
 import { CollapsibleSection } from '@/src/components/CollapsibleSection';
 import { ThemeModeSelector } from '@/src/components/ThemeModeSelector';
-import { appConfig } from '@/src/config/app-config';
 import { usePrayerNotifications } from '@/src/notifications/notification-provider';
 import { ManualLocationForm } from '@/src/prayer/ManualLocationForm';
 import { usePrayerData } from '@/src/prayer/prayer-provider';
+import { useGoogleDriveSync } from '@/src/sync/google-drive-sync-provider';
 import { useAppPalette } from '@/src/theme/palette';
 import { useThemePreference } from '@/src/theme/theme-provider';
 
 export default function SettingsScreen() {
   const palette = useAppPalette();
-  const showDiagnostics = __DEV__ || appConfig.buildStage !== 'production';
-  const { hasLoadedPreference, resolvedTheme, setThemePreference, themePreference } = useThemePreference();
+  const { setThemePreference, themePreference } = useThemePreference();
   const {
     adjustPrayerOffset,
     isRefreshingLocation,
@@ -33,10 +31,8 @@ export default function SettingsScreen() {
     setMadhab,
   } = usePrayerData();
   const {
-    capability,
     isHydrated: notificationsHydrated,
     isSyncing: isSyncingNotifications,
-    lastScheduledCount,
     permissionState,
     preferences: notificationPreferences,
     requestPermission,
@@ -45,6 +41,17 @@ export default function SettingsScreen() {
     syncError,
     syncNow,
   } = usePrayerNotifications();
+  const {
+    account,
+    connect,
+    disconnect,
+    hasLoadedSession,
+    isConnecting,
+    isSyncing: isSyncingDrive,
+    lastSyncedAt,
+    syncError: driveSyncError,
+    syncNow: syncDriveNow,
+  } = useGoogleDriveSync();
 
   return (
     <ScrollView
@@ -52,27 +59,42 @@ export default function SettingsScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
+      {/* Hero */}
       <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
         <Text style={[styles.title, { color: palette.text }]}>Settings</Text>
         <Text style={[styles.copy, { color: palette.subtleText }]}>
-          Manage your app preferences and behavior here.
+          Personalize your prayer experience.
         </Text>
-        <Text style={[styles.endpoint, { color: palette.subtleText }]}>Stage | {appConfig.buildStage}</Text>
+        {/* Subtle sync status line */}
+        <View style={styles.syncStatusRow}>
+          <Text style={[styles.syncStatusText, { color: palette.subtleText }]}>
+            {'Device · '}
+            <Text style={{ color: palette.subtleText }}>
+              {savedLocation ? savedLocation.label : 'No location'}
+            </Text>
+          </Text>
+          {hasLoadedSession ? (
+            <Text style={[styles.syncStatusText, { color: palette.subtleText }]}>
+              {'Drive · '}
+              <Text style={{ color: lastSyncedAt ? palette.success : palette.subtleText }}>
+                {lastSyncedAt ? lastSyncedAt : account ? 'not yet synced' : 'not linked'}
+              </Text>
+            </Text>
+          ) : null}
+        </View>
       </View>
 
-      <CollapsibleSection title="Appearance" subtitle="Theme preference">
-        <Text style={[styles.supportText, { color: palette.subtleText }]}>
-          Saved: {hasLoadedPreference ? themePreference : 'loading'} | Resolved: {resolvedTheme}
-        </Text>
+      {/* Display */}
+      <CollapsibleSection title="Display" subtitle="Theme preference">
         <ThemeModeSelector value={themePreference} onChange={setThemePreference} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Break Calculation" subtitle="Method and madhab">
+      {/* Prayer Time Calculation */}
+      <CollapsibleSection title="Prayer Time Calculation" subtitle="Method and school of thought">
         <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Calculation method</Text>
         <View style={styles.optionGrid}>
           {calculationMethodOptions.map((option) => {
             const isActive = option.id === prayerPreferences.calculationMethod;
-
             return (
               <Pressable
                 key={option.id}
@@ -86,24 +108,10 @@ export default function SettingsScreen() {
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.optionTitle,
-                    {
-                      color: isActive ? palette.accent : palette.text,
-                    },
-                  ]}
-                >
+                <Text style={[styles.optionTitle, { color: isActive ? palette.accent : palette.text }]}>
                   {option.label}
                 </Text>
-                <Text
-                  style={[
-                    styles.optionDescription,
-                    {
-                      color: isActive ? palette.accent : palette.subtleText,
-                    },
-                  ]}
-                >
+                <Text style={[styles.optionDescription, { color: isActive ? palette.accent : palette.subtleText }]}>
                   {option.description}
                 </Text>
               </Pressable>
@@ -115,7 +123,6 @@ export default function SettingsScreen() {
         <View style={styles.optionGrid}>
           {madhabOptions.map((option) => {
             const isActive = option.id === prayerPreferences.madhab;
-
             return (
               <Pressable
                 key={option.id}
@@ -129,24 +136,10 @@ export default function SettingsScreen() {
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.optionTitle,
-                    {
-                      color: isActive ? palette.accent : palette.text,
-                    },
-                  ]}
-                >
+                <Text style={[styles.optionTitle, { color: isActive ? palette.accent : palette.text }]}>
                   {option.label}
                 </Text>
-                <Text
-                  style={[
-                    styles.optionDescription,
-                    {
-                      color: isActive ? palette.accent : palette.subtleText,
-                    },
-                  ]}
-                >
+                <Text style={[styles.optionDescription, { color: isActive ? palette.accent : palette.subtleText }]}>
                   {option.description}
                 </Text>
               </Pressable>
@@ -155,7 +148,8 @@ export default function SettingsScreen() {
         </View>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Manual Adjustment" subtitle="Per-prayer minute offsets">
+      {/* Fine-Tune Times */}
+      <CollapsibleSection title="Fine-Tune Times" subtitle="Adjust individual prayers by minutes">
         {prayerAdjustmentOptions.map((adjustment) => (
           <View key={adjustment.key} style={[styles.adjustmentRow, { borderBottomColor: palette.border }]}>
             <View style={styles.adjustmentCopy}>
@@ -170,7 +164,7 @@ export default function SettingsScreen() {
                 onPress={() => void adjustPrayerOffset(adjustment.key, -1)}
                 style={[styles.adjustmentButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
               >
-                <Text style={[styles.adjustmentButtonLabel, { color: palette.text }]}>-1</Text>
+                <Text style={[styles.adjustmentButtonLabel, { color: palette.text }]}>−1</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -184,47 +178,43 @@ export default function SettingsScreen() {
         ))}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Location" subtitle="Prayer day follows the saved location">
+      {/* Your Location */}
+      <CollapsibleSection title="Your Location" subtitle="Prayer times follow the saved location">
         <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
           <View style={styles.infoCopy}>
-            <Text style={[styles.infoTitle, { color: palette.text }]}>Current location</Text>
+            <Text style={[styles.infoTitle, { color: palette.text }]}>Saved location</Text>
             <Text style={[styles.infoBody, { color: palette.subtleText }]}>
-              {savedLocation ? savedLocation.label : 'No saved location yet'}
+              {savedLocation ? savedLocation.label : 'No location saved yet'}
             </Text>
           </View>
-          <Text style={[styles.infoValue, { color: palette.text }]}>{savedLocation?.source ?? 'none'}</Text>
+          {savedLocation?.source ? (
+            <View style={[styles.badge, { backgroundColor: palette.accentSoft }]}>
+              <Text style={[styles.badgeText, { color: palette.accent }]}>{savedLocation.source}</Text>
+            </View>
+          ) : null}
         </View>
         <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
           <View style={styles.infoCopy}>
-            <Text style={[styles.infoTitle, { color: palette.text }]}>Effective timezone</Text>
+            <Text style={[styles.infoTitle, { color: palette.text }]}>Local timezone</Text>
             <Text style={[styles.infoBody, { color: palette.subtleText }]}>
-              Used for the prayer day and local prayer times.
-            </Text>
-          </View>
-          <Text style={[styles.infoValue, { color: palette.text }]}>{savedLocation?.timeZone ?? 'device default'}</Text>
-        </View>
-        <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
-          <View style={styles.infoCopy}>
-            <Text style={[styles.infoTitle, { color: palette.text }]}>Timezone source</Text>
-            <Text style={[styles.infoBody, { color: palette.subtleText }]}>
-              Geo-derived by default, with manual override when needed.
+              Used to calculate your daily prayer schedule.
             </Text>
           </View>
           <Text style={[styles.infoValue, { color: palette.text }]}>
-            {savedLocation?.timeZoneSource ?? 'none'}
+            {savedLocation?.timeZone ?? 'Device default'}
           </Text>
         </View>
         <Pressable
           accessibilityRole="button"
           onPress={() => void refreshLocation()}
-          style={[styles.refreshButton, { backgroundColor: palette.accent }]}
+          style={[styles.actionButton, { backgroundColor: palette.accent }]}
         >
-          <Text style={[styles.refreshButtonLabel, { color: palette.surface }]}>
-            {isRefreshingLocation ? 'Refreshing location...' : 'Use current location'}
+          <Text style={[styles.actionButtonLabel, { color: palette.background }]}>
+            {isRefreshingLocation ? 'Refreshing\u2026' : 'Use current location'}
           </Text>
         </Pressable>
         <ManualLocationForm
-          helperText="Use coordinates when location access is unavailable. Leave timezone blank to derive it."
+          helperText="Enter coordinates when location access is unavailable."
           initialValues={
             savedLocation?.source === 'manual'
               ? {
@@ -238,55 +228,47 @@ export default function SettingsScreen() {
           }
           isSubmitting={isRefreshingLocation}
           onSubmit={saveManualLocation}
-          submitLabel={savedLocation?.source === 'manual' ? 'Update manual location' : 'Save manual location'}
+          submitLabel={savedLocation?.source === 'manual' ? 'Update location' : 'Save location'}
         />
         {savedLocation?.timeZoneSource === 'device-fallback' ? (
-          <Text style={[styles.supportText, { color: palette.text }]}>
-            Coordinate lookup could not resolve a timezone for this saved location, so the app is
-            temporarily using the device timezone instead.
+          <Text style={[styles.supportText, { color: palette.subtleText }]}>
+            Using your device timezone as a fallback — coordinate lookup was unavailable.
           </Text>
         ) : null}
         {locationError ? (
-          <Text style={[styles.supportText, { color: palette.text }]}>{locationError}</Text>
+          <Text style={[styles.supportText, { color: palette.danger }]}>{locationError}</Text>
         ) : null}
       </CollapsibleSection>
 
+      {/* Prayer Reminders */}
       <CollapsibleSection
-        title="Notifications"
-        subtitle={
-          capability === 'web-push' ? 'Web push in supported browsers' : 'Local reminders on this device'
-        }
+        title="Prayer Reminders"
+        subtitle="Alerts and reminder timing"
       >
-        <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
-          <View style={styles.infoCopy}>
-            <Text style={[styles.infoTitle, { color: palette.text }]}>Permission state</Text>
-            <Text style={[styles.infoBody, { color: palette.subtleText }]}>
-              {capability === 'web-push'
-                ? 'Web push works when the browser supports service workers.'
-                : 'Local reminders can run on this device with bundled sounds.'}
+        {/* Permission state — shown only if not yet granted */}
+        {notificationsHydrated && permissionState !== 'granted' ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void requestPermission()}
+            style={[styles.actionButton, { backgroundColor: palette.accent }]}
+          >
+            <Text style={[styles.actionButtonLabel, { color: palette.background }]}>
+              Enable notifications
+            </Text>
+          </Pressable>
+        ) : null}
+        {notificationsHydrated && permissionState === 'granted' ? (
+          <View style={[styles.permissionGranted, { borderColor: palette.successSoft }]}>
+            <Text style={[styles.permissionGrantedText, { color: palette.subtleText }]}>
+              {'✓ Notifications are enabled'}
             </Text>
           </View>
-          <Text style={[styles.infoValue, { color: palette.text }]}>
-            {notificationsHydrated ? permissionState : 'loading'}
-          </Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void requestPermission()}
-          style={[styles.refreshButton, { backgroundColor: palette.accent }]}
-        >
-          <Text style={[styles.refreshButtonLabel, { color: palette.surface }]}>
-            {permissionState === 'granted' ? 'Permission granted' : 'Enable notifications'}
-          </Text>
-        </Pressable>
-        <Text style={[styles.supportText, { color: palette.subtleText }]}>
-          Scheduled jobs in the current window: {lastScheduledCount}
-        </Text>
-        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Prayer alerts</Text>
+        ) : null}
+
+        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Which prayers</Text>
         <View style={styles.optionGrid}>
           {notifiablePrayerNames.map((prayerName) => {
             const isActive = notificationPreferences.enabledPrayers[prayerName];
-
             return (
               <Pressable
                 key={prayerName}
@@ -301,35 +283,21 @@ export default function SettingsScreen() {
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.optionTitle,
-                    {
-                      color: isActive ? palette.accent : palette.text,
-                    },
-                  ]}
-                >
+                <Text style={[styles.optionTitle, { color: isActive ? palette.accent : palette.text }]}>
                   {prayerName}
                 </Text>
-                <Text
-                  style={[
-                    styles.optionDescription,
-                    {
-                      color: isActive ? palette.accent : palette.subtleText,
-                    },
-                  ]}
-                >
-                  {isActive ? 'Prayer-start alert enabled' : 'Prayer-start alert disabled'}
+                <Text style={[styles.optionDescription, { color: isActive ? palette.accent : palette.subtleText }]}>
+                  {isActive ? 'Alert on' : 'Alert off'}
                 </Text>
               </Pressable>
             );
           })}
         </View>
-        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Reminder timing</Text>
+
+        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Reminder lead time</Text>
         <View style={styles.optionGrid}>
           {notificationPreReminderOptions.map((option) => {
             const isActive = option.value === notificationPreferences.preReminderMinutes;
-
             return (
               <Pressable
                 key={option.label}
@@ -343,55 +311,98 @@ export default function SettingsScreen() {
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.optionTitle,
-                    {
-                      color: isActive ? palette.accent : palette.text,
-                    },
-                  ]}
-                >
+                <Text style={[styles.optionTitle, { color: isActive ? palette.accent : palette.text }]}>
                   {option.label}
                 </Text>
-                <Text
-                  style={[
-                    styles.optionDescription,
-                    {
-                      color: isActive ? palette.accent : palette.subtleText,
-                    },
-                  ]}
-                >
-                  {option.value
-                    ? 'Shared reminder window before every enabled prayer'
-                    : 'Only notify right when the prayer begins'}
+                <Text style={[styles.optionDescription, { color: isActive ? palette.accent : palette.subtleText }]}>
+                  {option.value ? 'Reminder before prayer' : 'Alert at prayer time only'}
                 </Text>
               </Pressable>
             );
           })}
         </View>
+
         <Pressable
           accessibilityRole="button"
           onPress={() => void syncNow()}
-          style={[styles.secondaryActionButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
+          style={[styles.secondaryButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
         >
-          <Text style={[styles.secondaryActionButtonLabel, { color: palette.text }]}>
-            {isSyncingNotifications ? 'Refreshing schedules...' : 'Refresh schedules'}
+          <Text style={[styles.secondaryButtonLabel, { color: palette.text }]}>
+            {isSyncingNotifications ? 'Refreshing\u2026' : 'Refresh schedules'}
           </Text>
         </Pressable>
         {syncError ? (
-          <Text style={[styles.supportText, { color: palette.text }]}>{syncError}</Text>
+          <Text style={[styles.supportText, { color: palette.danger }]}>{syncError}</Text>
         ) : null}
       </CollapsibleSection>
+      {/* Backup & Sync */}
+      <CollapsibleSection title="Backup &amp; Sync" subtitle="Google Drive backup and restore">
+        <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
+          <View style={styles.infoCopy}>
+            <Text style={[styles.infoTitle, { color: palette.text }]}>Google account</Text>
+            <Text style={[styles.infoBody, { color: palette.subtleText }]}>
+              {account
+                ? 'Prayer history syncs automatically to your Drive app-data folder.'
+                : 'Sign in to back up and restore your data across devices.'}
+            </Text>
+          </View>
+          {hasLoadedSession ? (
+            <View style={[styles.badge, { backgroundColor: account ? palette.successSoft : palette.accentSoft }]}>
+              <Text style={[styles.badgeText, { color: account ? palette.success : palette.subtleText }]}>
+                {account ? 'linked' : 'not linked'}
+              </Text>
+            </View>
+          ) : null}
+        </View>
 
-      {showDiagnostics ? (
-        <Link href="/diagnostics" asChild>
-          <Pressable style={styles.diagnosticsLink}>
-            <Text style={[styles.diagnosticsLinkText, { color: palette.subtleText }]}>
-              Developer diagnostics
+        {account ? (
+          <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
+            <View style={styles.infoCopy}>
+              <Text style={[styles.infoTitle, { color: palette.text }]}>Account</Text>
+            </View>
+            <Text style={[styles.infoValue, { color: palette.subtleText }]} numberOfLines={1}>
+              {account.email}
+            </Text>
+          </View>
+        ) : null}
+
+        {lastSyncedAt ? (
+          <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
+            <View style={styles.infoCopy}>
+              <Text style={[styles.infoTitle, { color: palette.text }]}>Last Drive sync</Text>
+            </View>
+            <Text style={[styles.infoValue, { color: palette.subtleText }]}>{lastSyncedAt}</Text>
+          </View>
+        ) : null}
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void (account ? syncDriveNow() : connect())}
+          style={[styles.actionButton, { backgroundColor: palette.accent }]}
+        >
+          <Text style={[styles.actionButtonLabel, { color: palette.background }]}>
+            {account
+              ? isSyncingDrive ? 'Syncing…' : 'Sync now'
+              : isConnecting ? 'Connecting…' : 'Connect Google Drive'}
+          </Text>
+        </Pressable>
+
+        {account ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void disconnect()}
+            style={[styles.secondaryButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
+          >
+            <Text style={[styles.secondaryButtonLabel, { color: palette.subtleText }]}>
+              Disconnect Drive
             </Text>
           </Pressable>
-        </Link>
-      ) : null}
+        ) : null}
+
+        {driveSyncError ? (
+          <Text style={[styles.supportText, { color: palette.danger }]}>{driveSyncError}</Text>
+        ) : null}
+      </CollapsibleSection>
     </ScrollView>
   );
 }
@@ -407,21 +418,18 @@ const styles = StyleSheet.create({
   },
   hero: {
     borderRadius: 22,
-    borderWidth: 1,
-    gap: 8,
-    padding: 18,
+    borderWidth: 0.5,
+    gap: 6,
+    padding: 20,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 26,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   copy: {
     fontSize: 14,
     lineHeight: 21,
-  },
-  endpoint: {
-    fontSize: 12,
-    fontWeight: '500',
   },
   supportText: {
     fontSize: 13,
@@ -430,14 +438,17 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    marginTop: 4,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginTop: 6,
+    marginBottom: 2,
   },
   optionGrid: {
     gap: 8,
   },
   optionCard: {
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 0.5,
     gap: 4,
     padding: 12,
   },
@@ -451,7 +462,7 @@ const styles = StyleSheet.create({
   },
   adjustmentRow: {
     alignItems: 'flex-start',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'space-between',
@@ -474,7 +485,7 @@ const styles = StyleSheet.create({
   adjustmentButton: {
     alignItems: 'center',
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 0.5,
     minWidth: 54,
     paddingHorizontal: 12,
     paddingVertical: 9,
@@ -485,7 +496,7 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     alignItems: 'flex-start',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'space-between',
@@ -505,40 +516,64 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 13,
-    fontWeight: '600',
-    maxWidth: 120,
+    fontWeight: '500',
+    maxWidth: 160,
     textAlign: 'right',
   },
-  refreshButton: {
+  badge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'center',
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  actionButton: {
     alignItems: 'center',
     borderRadius: 14,
     marginTop: 6,
     paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  actionButtonLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 0.5,
+    marginTop: 6,
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  refreshButtonLabel: {
+  secondaryButtonLabel: {
     fontSize: 14,
     fontWeight: '600',
   },
-  secondaryActionButton: {
-    alignItems: 'center',
-    borderRadius: 14,
+  permissionGranted: {
+    borderRadius: 12,
     borderWidth: 1,
-    marginTop: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  secondaryActionButtonLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  diagnosticsLink: {
-    alignItems: 'center',
-    marginTop: 20,
+    paddingHorizontal: 14,
     paddingVertical: 10,
+    alignItems: 'center',
   },
-  diagnosticsLinkText: {
+  permissionGrantedText: {
     fontSize: 13,
-    textDecorationLine: 'underline',
-  }
+    fontWeight: '500',
+  },
+  syncStatusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 4,
+  },
+  syncStatusText: {
+    fontSize: 11,
+    fontWeight: '400',
+    letterSpacing: 0.2,
+    lineHeight: 17,
+  },
 });

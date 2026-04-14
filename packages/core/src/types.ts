@@ -1,5 +1,5 @@
 export type PrayerName = 'Fajr' | 'Sunrise' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha';
-export type TrackablePrayerName = Exclude<PrayerName, 'Sunrise'>;
+export type TrackablePrayerName = PrayerName;
 export type NotifiablePrayerName = TrackablePrayerName;
 export type AppPlatform = 'android' | 'ios' | 'web';
 export type AppThemePreference = 'light' | 'dark' | 'system';

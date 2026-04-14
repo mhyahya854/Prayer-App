@@ -16,7 +16,7 @@ import type {
 } from '@/src/content/types';
 
 const databaseName = 'prayer-app.db';
-const contentVersionMetaKey = 'content_seed_version';
+const contentVersionMetaKey = 'content_seed_version_v2';
 
 let databasePromise: Promise<SQLiteDatabase> | null = null;
 
@@ -55,6 +55,7 @@ function mapQuranSavedVerse(row: {
   createdAt?: string;
   translation: string;
   transliteration: string;
+  explanation?: string | null;
   updatedAt: string;
   verseId: number;
 }): QuranSavedVerse {
@@ -66,6 +67,7 @@ function mapQuranSavedVerse(row: {
     chapterTransliteration: row.chapterTransliteration,
     translation: row.translation,
     transliteration: row.transliteration,
+    explanation: row.explanation,
     updatedAt: row.updatedAt,
     verseId: row.verseId,
   };
@@ -103,6 +105,7 @@ async function migrateDatabase(database: SQLiteDatabase) {
       arabic_text TEXT NOT NULL,
       transliteration TEXT NOT NULL,
       translation TEXT NOT NULL,
+      explanation TEXT,
       PRIMARY KEY (chapter_id, verse_id),
       FOREIGN KEY (chapter_id) REFERENCES quran_chapters(chapter_id) ON DELETE CASCADE
     );
@@ -216,13 +219,15 @@ async function seedContentIfNeeded(database: SQLiteDatabase) {
             verse_id,
             arabic_text,
             transliteration,
-            translation
-          ) VALUES (?, ?, ?, ?, ?)`,
+            translation,
+            explanation
+          ) VALUES (?, ?, ?, ?, ?, ?)`,
           chapter.id,
           verse.id,
           verse.text,
           verse.transliteration,
           verse.translation,
+          verse.explanation ?? null,
         );
       }
     }
@@ -309,6 +314,7 @@ export async function getQuranHomeSnapshot(): Promise<QuranHomeSnapshot> {
     chapterTransliteration: string;
     translation: string;
     transliteration: string;
+    explanation?: string | null;
     updatedAt: string;
     verseId: number;
   }>(
@@ -321,7 +327,8 @@ export async function getQuranHomeSnapshot(): Promise<QuranHomeSnapshot> {
       c.translation as chapterTranslation,
       v.arabic_text as arabicText,
       v.transliteration as transliteration,
-      v.translation as translation
+      v.translation as translation,
+      v.explanation as explanation
     FROM quran_reading_state r
     JOIN quran_chapters c ON c.chapter_id = r.chapter_id
     JOIN quran_verses v ON v.chapter_id = r.chapter_id AND v.verse_id = r.verse_id
@@ -337,6 +344,7 @@ export async function getQuranHomeSnapshot(): Promise<QuranHomeSnapshot> {
     createdAt: string;
     translation: string;
     transliteration: string;
+    explanation?: string | null;
     updatedAt: string;
     verseId: number;
   }>(
@@ -350,7 +358,8 @@ export async function getQuranHomeSnapshot(): Promise<QuranHomeSnapshot> {
       c.translation as chapterTranslation,
       v.arabic_text as arabicText,
       v.transliteration as transliteration,
-      v.translation as translation
+      v.translation as translation,
+      v.explanation as explanation
     FROM quran_bookmarks b
     JOIN quran_chapters c ON c.chapter_id = b.chapter_id
     JOIN quran_verses v ON v.chapter_id = b.chapter_id AND v.verse_id = b.verse_id
@@ -455,6 +464,7 @@ export async function getQuranChapterDetail(chapterId: number): Promise<QuranCha
     isLastRead: number;
     translation: string;
     transliteration: string;
+    explanation?: string | null;
     verseId: number;
   }>(
     `SELECT
@@ -463,6 +473,7 @@ export async function getQuranChapterDetail(chapterId: number): Promise<QuranCha
       v.arabic_text as arabicText,
       v.transliteration as transliteration,
       v.translation as translation,
+      v.explanation as explanation,
       CASE WHEN b.chapter_id IS NULL THEN 0 ELSE 1 END as isBookmarked,
       CASE WHEN r.chapter_id = v.chapter_id AND r.verse_id = v.verse_id THEN 1 ELSE 0 END as isLastRead
     FROM quran_verses v
@@ -483,6 +494,7 @@ export async function getQuranChapterDetail(chapterId: number): Promise<QuranCha
         isLastRead: boolFromDatabase(row.isLastRead),
         translation: row.translation,
         transliteration: row.transliteration,
+        explanation: row.explanation,
         verseId: row.verseId,
       }),
     ),

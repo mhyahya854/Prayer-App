@@ -7,17 +7,23 @@ import { createContext, type PropsWithChildren, useContext, useEffect, useState 
 import { useColorScheme as useSystemColorScheme } from 'react-native';
 
 import {
+  loadThemeAccentSnapshot,
   loadThemePreferenceSnapshot,
+  saveThemeAccent,
   saveThemePreference,
+  type ThemeAccent,
 } from '@/src/lib/storage/theme-storage';
 
 export type ResolvedTheme = 'light' | 'dark';
 export type ThemePreference = AppThemePreference;
 
 interface ThemePreferenceContextValue {
+  accentTheme: ThemeAccent;
+  accentThemeUpdatedAt: string;
   hasLoadedPreference: boolean;
   replaceThemePreferenceSnapshot: (snapshot: TimestampedValue<ThemePreference>) => Promise<void>;
   resolvedTheme: ResolvedTheme;
+  setAccentTheme: (nextAccent: ThemeAccent) => Promise<void>;
   themePreference: ThemePreference;
   themePreferenceUpdatedAt: string;
   setThemePreference: (nextPreference: ThemePreference) => Promise<void>;
@@ -29,6 +35,8 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
   const systemColorScheme = useSystemColorScheme();
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(getDefaultThemePreference());
   const [themePreferenceUpdatedAt, setThemePreferenceUpdatedAt] = useState<string>('');
+  const [accentTheme, setAccentThemeState] = useState<ThemeAccent>('default');
+  const [accentThemeUpdatedAt, setAccentThemeUpdatedAt] = useState<string>('');
   const [hasLoadedPreference, setHasLoadedPreference] = useState(false);
 
   useEffect(() => {
@@ -37,10 +45,13 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
     async function loadPreference() {
       try {
         const snapshot = await loadThemePreferenceSnapshot();
+        const accentSnapshot = await loadThemeAccentSnapshot();
 
         if (isMounted) {
           setThemePreferenceState(snapshot.value);
           setThemePreferenceUpdatedAt(snapshot.updatedAt);
+          setAccentThemeState(accentSnapshot.value);
+          setAccentThemeUpdatedAt(accentSnapshot.updatedAt);
         }
       } catch {
         // Ignore storage issues and keep the system theme fallback.
@@ -83,12 +94,27 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
     await saveThemePreference(snapshot.value, snapshot.updatedAt);
   }
 
+  async function setAccentTheme(nextAccent: ThemeAccent) {
+    const updatedAt = new Date().toISOString();
+    setAccentThemeState(nextAccent);
+    setAccentThemeUpdatedAt(updatedAt);
+
+    try {
+      await saveThemeAccent(nextAccent, updatedAt);
+    } catch {
+      // Ignore persistence failures for now; in-memory state still updates.
+    }
+  }
+
   return (
     <ThemePreferenceContext.Provider
       value={{
+        accentTheme,
+        accentThemeUpdatedAt,
         hasLoadedPreference,
         replaceThemePreferenceSnapshot,
         resolvedTheme,
+        setAccentTheme,
         themePreference,
         themePreferenceUpdatedAt,
         setThemePreference,

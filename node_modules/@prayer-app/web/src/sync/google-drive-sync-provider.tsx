@@ -19,6 +19,7 @@ import {
   fetchGoogleDriveSession,
   startGoogleDriveAuth,
   upsertGoogleDriveBackup,
+  exportGoogleDriveDocument,
 } from '@/src/lib/api/client';
 import {
   clearGoogleDriveSessionSnapshot,
@@ -42,6 +43,7 @@ interface GoogleDriveSyncContextValue {
   sessionToken: string | null;
   syncError: string | null;
   syncNow: () => Promise<void>;
+  exportDocument: (folderName: string, fileName: string, content: string, mimeType: string) => Promise<{ fileId: string; webViewLink?: string } | null>;
 }
 
 const GoogleDriveSyncContext = createContext<GoogleDriveSyncContextValue | null>(null);
@@ -325,6 +327,25 @@ export function GoogleDriveSyncProvider({ children }: PropsWithChildren) {
     await clearPersistedSession();
   }
 
+  async function exportDocument(folderName: string, fileName: string, content: string, mimeType: string) {
+    if (!sessionToken) {
+      return null;
+    }
+    
+    try {
+      const response = await exportGoogleDriveDocument(sessionToken, {
+        folderName,
+        fileName,
+        content,
+        mimeType,
+      });
+      return response;
+    } catch (error) {
+      setSyncError(getErrorMessage(error));
+      return null;
+    }
+  }
+
   useEffect(() => {
     if (!hasLoadedSession || !sessionToken || !hasHydratedLocalState || hasCompletedInitialSyncRef.current) {
       return;
@@ -382,6 +403,7 @@ export function GoogleDriveSyncProvider({ children }: PropsWithChildren) {
         sessionToken,
         syncError,
         syncNow,
+        exportDocument,
       }}
     >
       {children}

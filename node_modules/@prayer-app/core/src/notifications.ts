@@ -1,5 +1,4 @@
 import { computePrayerDay, formatDateKey, shiftDateKey } from './prayer';
-import { isTrackablePrayerName, trackablePrayerNames } from './tracking';
 import type {
   NotificationScheduleJob,
   NotifiablePrayerName,
@@ -21,12 +20,20 @@ export const notificationPreReminderOptions: Array<{
   { label: '30 min', value: 30 },
 ];
 
-export const notifiablePrayerNames = [...trackablePrayerNames] satisfies NotifiablePrayerName[];
+export const notifiablePrayerNames = [
+  'Fajr',
+  'Sunrise',
+  'Dhuhr',
+  'Asr',
+  'Maghrib',
+  'Isha',
+] satisfies NotifiablePrayerName[];
 
 export function getDefaultPrayerNotificationPreferences(): PrayerNotificationPreferences {
   return {
     enabledPrayers: {
       Fajr: true,
+      Sunrise: true,
       Dhuhr: true,
       Asr: true,
       Maghrib: true,
@@ -37,7 +44,7 @@ export function getDefaultPrayerNotificationPreferences(): PrayerNotificationPre
 }
 
 export function isNotifiablePrayerName(prayerName: string): prayerName is NotifiablePrayerName {
-  return isTrackablePrayerName(prayerName);
+  return notifiablePrayerNames.includes(prayerName as NotifiablePrayerName);
 }
 
 export function createPrayerNotificationScheduleJobs(

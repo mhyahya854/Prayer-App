@@ -4,8 +4,15 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useEffect, useState } from 'react';
 
 import { SectionCard } from '@/src/components/SectionCard';
+import {
+  getArabicFontFamily,
+  getArabicLineHeightMultiplier,
+  quranScriptStyleOptions,
+  type QuranScriptStyle,
+} from '@/src/content/quran-display-style';
 import { useContentData } from '@/src/content/content-provider';
 import type { QuranHomeSnapshot, QuranSearchResult } from '@/src/content/types';
+import { loadQuranScriptStyle, saveQuranScriptStyle } from '@/src/lib/storage/quran-display-storage';
 import { useAppPalette } from '@/src/theme/palette';
 
 export default function QuranScreen() {
@@ -17,7 +24,32 @@ export default function QuranScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<QuranSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [scriptStyle, setScriptStyle] = useState<QuranScriptStyle>('uthmani');
   const lastRead = homeSnapshot?.lastRead ?? null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void loadQuranScriptStyle().then((storedStyle) => {
+      if (isMounted) {
+        setScriptStyle(storedStyle);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  async function handleSetScriptStyle(nextStyle: QuranScriptStyle) {
+    setScriptStyle(nextStyle);
+    await saveQuranScriptStyle(nextStyle);
+  }
+
+  const arabicSearchStyle = {
+    fontFamily: getArabicFontFamily(scriptStyle),
+    lineHeight: Math.round(30 * getArabicLineHeightMultiplier(scriptStyle)),
+  };
 
   useEffect(() => {
     if (!isReady || !isFocused) {
@@ -141,6 +173,30 @@ export default function QuranScreen() {
       </View>
 
       <SectionCard title="Search" subtitle="Find a surah, verse, or phrase">
+        <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Arabic script style</Text>
+        <View style={styles.scriptRow}>
+          {quranScriptStyleOptions.map((option) => {
+            const isActive = option.id === scriptStyle;
+            return (
+              <Pressable
+                key={option.id}
+                accessibilityRole="button"
+                onPress={() => void handleSetScriptStyle(option.id)}
+                style={[
+                  styles.scriptChip,
+                  {
+                    backgroundColor: isActive ? palette.accentSoft : palette.surface,
+                    borderColor: isActive ? palette.accent : palette.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.scriptChipText, { color: isActive ? palette.accent : palette.text }]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <TextInput
           accessibilityLabel="Search Quran"
           onChangeText={setSearchQuery}
@@ -188,7 +244,7 @@ export default function QuranScreen() {
               <Text style={[styles.searchSnippet, { color: palette.text }]}>{result.translationSnippet}</Text>
             ) : null}
             {result.arabicText ? (
-              <Text style={[styles.searchArabic, { color: palette.text }]} numberOfLines={2}>
+              <Text style={[styles.searchArabic, { color: palette.text }, arabicSearchStyle]} numberOfLines={2}>
                 {result.arabicText}
               </Text>
             ) : null}
@@ -336,8 +392,24 @@ const styles = StyleSheet.create({
   },
   searchArabic: {
     fontSize: 19,
-    lineHeight: 30,
+    lineHeight: 48,
     textAlign: 'right',
+  },
+  scriptRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
+  },
+  scriptChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  scriptChipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   savedItem: {
     borderBottomWidth: 1,

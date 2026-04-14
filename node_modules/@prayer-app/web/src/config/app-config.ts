@@ -11,5 +11,6 @@ function getDefaultApiUrl() {
 export const appConfig = {
   apiUrl: process.env.EXPO_PUBLIC_API_URL?.trim() || getDefaultApiUrl(),
   buildStage: process.env.EXPO_PUBLIC_APP_STAGE?.trim() || 'development',
+  googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || '',
   webPushPublicKey: process.env.EXPO_PUBLIC_WEB_PUSH_PUBLIC_KEY?.trim() || '',
 };

@@ -6,6 +6,7 @@ const trackablePrayerRecordSchema = z.object({
   Fajr: z.boolean(),
   Isha: z.boolean(),
   Maghrib: z.boolean(),
+  Sunrise: z.boolean(),
 });
 
 const prayerLogDaySchema = z.object({
@@ -44,6 +45,7 @@ const notificationPreferencesSchema = z.object({
     Fajr: z.boolean(),
     Isha: z.boolean(),
     Maghrib: z.boolean(),
+    Sunrise: z.boolean(),
   }),
   preReminderMinutes: z.union([z.literal(10), z.literal(15), z.literal(20), z.literal(30), z.null()]),
 });

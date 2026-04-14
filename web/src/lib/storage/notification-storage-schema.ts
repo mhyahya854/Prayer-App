@@ -33,6 +33,10 @@ function sanitizeNotificationPreferences(value: unknown): PrayerNotificationPref
   return {
     enabledPrayers: {
       Fajr: typeof enabledPrayers.Fajr === 'boolean' ? enabledPrayers.Fajr : fallback.enabledPrayers.Fajr,
+      Sunrise:
+        typeof enabledPrayers.Sunrise === 'boolean'
+          ? enabledPrayers.Sunrise
+          : fallback.enabledPrayers.Sunrise,
       Dhuhr: typeof enabledPrayers.Dhuhr === 'boolean' ? enabledPrayers.Dhuhr : fallback.enabledPrayers.Dhuhr,
       Asr: typeof enabledPrayers.Asr === 'boolean' ? enabledPrayers.Asr : fallback.enabledPrayers.Asr,
       Maghrib:

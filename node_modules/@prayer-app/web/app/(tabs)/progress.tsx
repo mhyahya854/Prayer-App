@@ -18,7 +18,7 @@ export default function ProgressScreen() {
       <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
         <Text style={[styles.title, { color: palette.text }]}>Progress</Text>
         <Text style={[styles.copy, { color: palette.subtleText }]}>
-          Local prayer check-ins from this device.
+          Your prayer journey, day by day.
         </Text>
         <View style={styles.pills}>
           <StatPill label="Today" value={`${prayerMetrics.completedToday}/${prayerMetrics.totalTrackablePrayers}`} />
@@ -28,7 +28,7 @@ export default function ProgressScreen() {
         </View>
       </View>
 
-      <SectionCard title="Current metrics" subtitle="From local prayer logs">
+      <SectionCard title="Your prayers" subtitle="Prayers completed">
         <View style={[styles.row, { borderBottomColor: palette.border }]}>
           <View style={styles.stack}>
             <Text style={[styles.rowTitle, { color: palette.text }]}>Completed today</Text>
@@ -78,7 +78,7 @@ export default function ProgressScreen() {
         </View>
       </SectionCard>
 
-      <SectionCard title="Recent days" subtitle="Prayer log history">
+      <SectionCard title="Recent history" subtitle="Day-by-day log">
         {isHydrated ? (
           prayerMetrics.recentDays.map((day) => (
             <View key={day.dateKey} style={[styles.row, { borderBottomColor: palette.border }]}>
@@ -94,15 +94,11 @@ export default function ProgressScreen() {
             </View>
           ))
         ) : (
-          <Text style={[styles.rowSubtitle, { color: palette.subtleText }]}>Loading local prayer history...</Text>
+          <Text style={[styles.rowSubtitle, { color: palette.subtleText }]}>Loading your history…</Text>
         )}
       </SectionCard>
 
-      <SectionCard title="Notes" subtitle="Sync and scope">
-        <Text style={[styles.scopeCopy, { color: palette.text }]}>
-          Google Drive can merge this history across signed-in devices. Advanced analytics are still future work.
-        </Text>
-      </SectionCard>
+
     </ScrollView>
   );
 }

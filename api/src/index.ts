@@ -82,6 +82,7 @@ const prayerPreferencesSchema = z.object({
 const notificationPreferencesSchema = z.object({
   enabledPrayers: z.object({
     Fajr: z.boolean(),
+    Sunrise: z.boolean(),
     Dhuhr: z.boolean(),
     Asr: z.boolean(),
     Maghrib: z.boolean(),

@@ -370,7 +370,7 @@ test('next prayer points to today fajr shortly before fajr begins', () => {
   assert.equal(beforeFajr.nextPrayerTime, baseline.prayers[0]?.time ?? null);
 });
 
-test('createPrayerNotificationScheduleJobs creates prayer start notifications for the five obligatory prayers only', () => {
+test('createPrayerNotificationScheduleJobs creates prayer start notifications for enabled prayers including sunrise', () => {
   const prayerDay = computePrayerDay({
     coordinates: {
       latitude: 3.139,
@@ -391,8 +391,8 @@ test('createPrayerNotificationScheduleJobs creates prayer start notifications fo
     new Date('2026-03-24T16:00:00.000Z'),
   );
 
-  assert.equal(jobs.filter((job) => job.kind === 'prayer-start').length, 5);
-  assert.equal(jobs.map((job) => job.prayerName).includes('Sunrise' as never), false);
+  assert.equal(jobs.filter((job) => job.kind === 'prayer-start').length, 6);
+  assert.equal(jobs.map((job) => job.prayerName).includes('Sunrise' as never), true);
 });
 
 test('createPrayerNotificationScheduleJobs includes optional pre-reminders and respects prayer toggles', () => {
@@ -414,6 +414,7 @@ test('createPrayerNotificationScheduleJobs includes optional pre-reminders and r
     {
       enabledPrayers: {
         Fajr: true,
+        Sunrise: true,
         Dhuhr: false,
         Asr: true,
         Maghrib: true,
@@ -424,14 +425,14 @@ test('createPrayerNotificationScheduleJobs includes optional pre-reminders and r
     new Date('2026-03-24T16:00:00.000Z'),
   );
 
-  assert.equal(jobs.filter((job) => job.kind === 'pre-reminder').length, 4);
+  assert.equal(jobs.filter((job) => job.kind === 'pre-reminder').length, 5);
   assert.equal(jobs.some((job) => job.prayerName === 'Dhuhr'), false);
 });
 
 test('calculatePrayerMetrics tracks current streak as today-inclusive and best streak historically', () => {
   let store: PrayerLogStore = {};
 
-  for (const prayerName of ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const) {
+  for (const prayerName of ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const) {
     store = setPrayerCompletion(store, '2026-03-20', prayerName, true);
     store = setPrayerCompletion(store, '2026-03-21', prayerName, true);
     store = setPrayerCompletion(store, '2026-03-22', prayerName, true);
@@ -447,7 +448,7 @@ test('calculatePrayerMetrics tracks current streak as today-inclusive and best s
   assert.equal(metrics.completedToday, 3);
   assert.equal(metrics.currentStreak, 0);
   assert.equal(metrics.bestStreak, 4);
-  assert.equal(metrics.last7DayCompletionRate, 66);
-  assert.equal(metrics.completedPrayersLast30Days, 23);
+  assert.equal(metrics.last7DayCompletionRate, 64);
+  assert.equal(metrics.completedPrayersLast30Days, 27);
   assert.equal(metrics.recentDays[0]?.dateKey, '2026-03-24');
 });

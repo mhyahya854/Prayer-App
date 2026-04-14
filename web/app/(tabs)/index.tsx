@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { isTrackablePrayerName } from '@prayer-app/core';
+import { isTrackablePrayerName, type PrayerName } from '@prayer-app/core';
 import { router } from 'expo-router';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, Modal } from 'react-native';
 import { ActivityIndicator } from 'react-native';
 
+import { usePrayerNotifications } from '@/src/notifications/notification-provider';
 import { usePrayerData } from '@/src/prayer/prayer-provider';
 import { useAppPalette } from '@/src/theme/palette';
 import type { Palette } from '@/src/theme/palette';
@@ -94,7 +95,6 @@ function PrayerArc({ dots, palette, width }: PrayerArcProps) {
   const nowPt = bezier(nowT);
 
   return (
-    // @ts-expect-error — SVG JSX is valid on web Platform
     <svg
       width={W}
       height={H + 40}
@@ -102,7 +102,6 @@ function PrayerArc({ dots, palette, width }: PrayerArcProps) {
       style={{ display: 'block', overflow: 'visible' }}
     >
       {/* Arc path */}
-      {/* @ts-expect-error */}
       <path
         d={arcPath}
         stroke={palette.border}
@@ -119,9 +118,7 @@ function PrayerArc({ dots, palette, width }: PrayerArcProps) {
         const labelAbove = i % 2 === 0;
 
         return (
-          // @ts-expect-error
           <g key={dot.name}>
-            {/* @ts-expect-error */}
             <circle
               cx={pt.x}
               cy={pt.y}
@@ -130,7 +127,6 @@ function PrayerArc({ dots, palette, width }: PrayerArcProps) {
               stroke={dot.isNext ? palette.accent : palette.subtleText}
               strokeWidth={dot.isNext ? 2 : 1.2}
             />
-            {/* @ts-expect-error */}
             <text
               x={pt.x}
               y={labelAbove ? pt.y - 14 : pt.y + 20}
@@ -148,7 +144,6 @@ function PrayerArc({ dots, palette, width }: PrayerArcProps) {
 
       {/* Sun / current-time indicator */}
       {nowT >= 0 && nowT <= 1 && (
-        // @ts-expect-error
         <circle cx={nowPt.x} cy={nowPt.y} r={10} fill={palette.gold} opacity={0.9} />
       )}
     </svg>
@@ -160,7 +155,7 @@ function PrayerArc({ dots, palette, width }: PrayerArcProps) {
 export default function HomeScreen() {
   const palette = useAppPalette();
   const { width } = useWindowDimensions();
-  const [earlyCompletionPrayer, setEarlyCompletionPrayer] = useState<string | null>(null);
+  const [earlyCompletionPrayer, setEarlyCompletionPrayer] = useState<PrayerName | null>(null);
   
   const [fastNow, setFastNow] = useState(() => new Date());
   useEffect(() => {
@@ -175,6 +170,8 @@ export default function HomeScreen() {
     todayKey,
     togglePrayerCompletion,
   } = usePrayerData();
+  const { permissionState, preferences: notificationPreferences, requestPermission, setPrayerEnabled } =
+    usePrayerNotifications();
 
   // ── Loading ────────────────────────────────────────────────────
   if (!isHydrated) {
@@ -231,7 +228,7 @@ export default function HomeScreen() {
   const arcDots: PrayerDot[] = prayerDay.prayers.map((p) => ({
     name: p.name,
     time: p.time,
-    isNext: p.isNext,
+    isNext: Boolean(p.isNext),
     done: isTrackablePrayerName(p.name)
       ? (prayerLogs[todayKey]?.prayers[p.name] ?? false)
       : false,
@@ -239,12 +236,16 @@ export default function HomeScreen() {
 
   // Greeting and current time
   const hour = fastNow.getHours();
-  const greeting = hour < 5 ? 'Late night' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const greeting = 'Assalam o Alykum, Welcome back';
   const displayHour = hour % 12 || 12;
   const displayMin = fastNow.getMinutes().toString().padStart(2, '0');
   const displaySec = fastNow.getSeconds().toString().padStart(2, '0');
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const currentTimeStr = `${displayHour}:${displayMin}:${displaySec} ${ampm}`;
+  const timeOfDayIcon = hour >= 6 && hour < 18 ? '☀️' : '🌙';
+  const reviewModeLabel = nextPrayer
+    ? `Reviewing ${prayerDay.gregorianDate} · upcoming prayers`
+    : `Reviewing ${prayerDay.gregorianDate} · past prayers`;
 
   return (
     <ScrollView
@@ -258,11 +259,36 @@ export default function HomeScreen() {
         <View style={styles.heroTopRow}>
           <View style={styles.heroTextBlock}>
             <Text style={[styles.heroGreeting, { color: palette.subtleText }]}>
-              {greeting} <Text style={{ color: palette.gold }}>· {currentTimeStr}</Text>
+              {greeting}
             </Text>
             <Text style={[styles.heroCurrentPrayer, { color: palette.text }]} data-testid="current-prayer-name">
               {currentPrayer?.name ?? (nextPrayer ? nextPrayer.name : 'All done')}
             </Text>
+            <View style={styles.countdownBlockRow}>
+              <View style={[styles.countdownBlock, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                <Text style={[styles.countdownBlockValue, { color: palette.gold }]}>
+                  {displayHour.toString().padStart(2, '0')}
+                </Text>
+                <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>HR</Text>
+              </View>
+              <Text style={[styles.countdownBlockColon, { color: palette.subtleText }]}>:</Text>
+              <View style={[styles.countdownBlock, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                <Text style={[styles.countdownBlockValue, { color: palette.gold }]}>
+                  {displayMin}
+                </Text>
+                <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>MIN</Text>
+              </View>
+              <Text style={[styles.countdownBlockColon, { color: palette.subtleText }]}>:</Text>
+              <View style={[styles.countdownBlock, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                <Text style={[styles.countdownBlockValue, { color: palette.gold }]}>
+                  {displaySec}
+                </Text>
+                <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>SEC</Text>
+              </View>
+              <Text style={[styles.countdownUntil, { color: palette.subtleText }]}>
+                <Text style={{ color: palette.accent, fontWeight: '700' }}>{ampm}</Text> now
+              </Text>
+            </View>
             {countdown && nextPrayer ? (
               <View style={styles.countdownBlockRow}>
                 <View style={[styles.countdownBlock, { backgroundColor: palette.card, borderColor: palette.border }]}>
@@ -298,6 +324,7 @@ export default function HomeScreen() {
 
           {/* Stats strip — top right */}
           <View style={[styles.heroStatBadge, { backgroundColor: palette.accentSoft, borderColor: palette.border }]}>
+            <Text style={styles.timeOfDayIcon}>{timeOfDayIcon}</Text>
             <Text style={[styles.heroStatValue, { color: palette.accent }]}>
               {prayerMetrics.completedToday}/{prayerMetrics.totalTrackablePrayers}
             </Text>
@@ -346,6 +373,7 @@ export default function HomeScreen() {
               {prayerDay.hijriDate}
             </Text>
           ) : null}
+          <Text style={[styles.reviewLabel, { color: palette.subtleText }]}>{reviewModeLabel}</Text>
         </View>
         {/* Method label — quiet right */}
         <Text style={[styles.dateMethod, { color: palette.subtleText }]} numberOfLines={1}>
@@ -367,6 +395,7 @@ export default function HomeScreen() {
           const prayerMins = parseTimeToMinutes(prayer.time);
           const nowMins = getCurrentMinutes();
           const isFuture = prayerMins > nowMins;
+          const notificationsEnabled = notificationPreferences.enabledPrayers[prayer.name];
 
           const handleToggle = () => {
             if (isFuture && !done) {
@@ -454,6 +483,33 @@ export default function HomeScreen() {
               >
                 {prayer.time}
               </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${notificationsEnabled ? 'Disable' : 'Enable'} ${prayer.name} alerts`}
+                onPress={() => {
+                  if (permissionState !== 'granted') {
+                    void requestPermission();
+                    return;
+                  }
+                  void setPrayerEnabled(prayer.name, !notificationsEnabled);
+                }}
+                style={[
+                  styles.rowNotifButton,
+                  {
+                    borderColor: notificationsEnabled ? palette.accent : palette.border,
+                    backgroundColor: notificationsEnabled ? palette.accentSoft : palette.surface,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.rowNotifIcon,
+                    { color: notificationsEnabled ? palette.accent : palette.subtleText },
+                  ]}
+                >
+                  {notificationsEnabled ? '🔔' : '🔕'}
+                </Text>
+              </Pressable>
             </View>
           );
         })}
@@ -709,6 +765,10 @@ const styles = StyleSheet.create({
     gap: 2,
     marginTop: 6,
   },
+  timeOfDayIcon: {
+    fontSize: 16,
+    lineHeight: 18,
+  },
   heroStatValue: {
     fontSize: 18,
     fontWeight: '700',
@@ -772,6 +832,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.2,
   },
+  reviewLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
   dateMethod: {
     fontSize: 10,
     fontWeight: '500',
@@ -830,6 +894,18 @@ const styles = StyleSheet.create({
   prayerTime: {
     fontSize: 15,
     letterSpacing: 0.4,
+  },
+  rowNotifButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowNotifIcon: {
+    fontSize: 14,
+    lineHeight: 16,
   },
 
   /* ── Stats row ───────────────────────────────────────────────────── */

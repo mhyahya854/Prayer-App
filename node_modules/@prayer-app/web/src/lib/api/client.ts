@@ -8,6 +8,8 @@ import type {
   GoogleDriveBackupFetchResponse,
   GoogleDriveBackupUpsertRequest,
   GoogleDriveBackupUpsertResponse,
+  GoogleDriveExportDocumentRequest,
+  GoogleDriveExportDocumentResponse,
   GoogleDriveSessionResponse,
   NotificationDisableRequest,
   NotificationRefreshRequest,
@@ -112,6 +114,20 @@ export function upsertGoogleDriveBackup(
     {
       body: JSON.stringify(payload),
       method: 'PUT',
+    },
+    sessionToken,
+  );
+}
+
+export function exportGoogleDriveDocument(
+  sessionToken: string,
+  payload: GoogleDriveExportDocumentRequest,
+) {
+  return apiRequest<GoogleDriveExportDocumentResponse>(
+    '/api/google/drive/export-document',
+    {
+      body: JSON.stringify(payload),
+      method: 'POST',
     },
     sessionToken,
   );

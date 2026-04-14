@@ -89,12 +89,21 @@ function createInstallationId() {
   return `install_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function mapNativePermissionStatus(status: Notifications.PermissionStatus): NotificationPermissionState {
-  if (status === Notifications.PermissionStatus.GRANTED) {
+function mapNativePermissionStatus(permissions: unknown): NotificationPermissionState {
+  const value =
+    typeof permissions === 'object' && permissions !== null
+      ? (permissions as Record<string, unknown>)
+      : {};
+
+  if (value.granted === true) {
     return 'granted';
   }
 
-  if (status === Notifications.PermissionStatus.DENIED) {
+  if (value.status === Notifications.PermissionStatus.GRANTED) {
+    return 'granted';
+  }
+
+  if (value.canAskAgain === false || value.status === Notifications.PermissionStatus.DENIED) {
     return 'denied';
   }
 
@@ -207,7 +216,7 @@ export function PrayerNotificationProvider({ children }: PropsWithChildren) {
           : null;
       } else {
         const permissions = await Notifications.getPermissionsAsync();
-        setPermissionState(mapNativePermissionStatus(permissions.status));
+        setPermissionState(mapNativePermissionStatus(permissions));
         await configureAndroidChannels();
       }
 
@@ -410,7 +419,7 @@ export function PrayerNotificationProvider({ children }: PropsWithChildren) {
     }
 
     const result = await Notifications.requestPermissionsAsync();
-    const nextState = mapNativePermissionStatus(result.status);
+    const nextState = mapNativePermissionStatus(result);
     setPermissionState(nextState);
 
     if (nextState === 'granted') {
@@ -457,7 +466,7 @@ export function PrayerNotificationProvider({ children }: PropsWithChildren) {
         setPermissionState(getWebPermissionState());
       } else {
         void Notifications.getPermissionsAsync().then((permissions) => {
-          setPermissionState(mapNativePermissionStatus(permissions.status));
+          setPermissionState(mapNativePermissionStatus(permissions));
         });
       }
 

@@ -52,14 +52,12 @@ export default function DuasScreen() {
   if (!isReady && !error) {
     return (
       <ScrollView style={[styles.screen, { backgroundColor: palette.background }]} contentContainerStyle={styles.content}>
-        <SectionCard title="Preparing duas" subtitle="Loading offline content">
-          <View style={styles.loadingState}>
-            <ActivityIndicator color={palette.accent} />
-            <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-              Loading local duas, categories, favorites, and counters.
-            </Text>
-          </View>
-        </SectionCard>
+        <View style={styles.loadingState}>
+          <ActivityIndicator color={palette.accent} size="large" />
+          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
+            Preparing your duas
+          </Text>
+        </View>
       </ScrollView>
     );
   }
@@ -73,10 +71,7 @@ export default function DuasScreen() {
       <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
         <Text style={[styles.title, { color: palette.text }]}>Duas</Text>
         <Text style={[styles.copy, { color: palette.text }]}>
-          Offline duas, favorites, and personal counters.
-        </Text>
-        <Text style={[styles.heroMeta, { color: palette.subtleText }]}>
-          {homeSnapshot?.categories.length ?? 0} categories ready offline
+          Supplication, remembrance, and personal practice.
         </Text>
       </View>
 
@@ -96,10 +91,10 @@ export default function DuasScreen() {
                 {dua.arabicText}
               </Text>
               <Text style={[styles.favoriteTranslation, { color: palette.text }]} numberOfLines={2}>
-                {dua.translation || 'Translation is still missing in the current source record.'}
+                {dua.translation || 'Translation unavailable'}
               </Text>
               <Text style={[styles.favoriteCounter, { color: palette.subtleText }]}>
-                Count: {dua.personalCount}
+                Recited {dua.personalCount} {dua.personalCount === 1 ? 'time' : 'times'}
               </Text>
             </Pressable>
           ))
@@ -129,15 +124,10 @@ export default function DuasScreen() {
         ))}
       </SectionCard>
 
-      <SectionCard title="Notes" subtitle="Source and scope">
-        <Text style={[styles.helperCopy, { color: palette.text }]}>
-          {duaSource.collection} from {duaSource.name} {duaSource.version}. Audio and reminder flows are still future work.
-        </Text>
-        <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-          License: {duaSource.license}
-        </Text>
-        {error ? <Text style={[styles.helperCopy, { color: palette.text }]}>{error}</Text> : null}
-      </SectionCard>
+      <Text style={[styles.attribution, { color: palette.subtleText }]}>
+        {duaSource.collection} · {duaSource.name} {duaSource.version} · {duaSource.license}
+      </Text>
+      {error ? <Text style={[styles.helperCopy, { color: palette.danger }]}>{error}</Text> : null}
     </ScrollView>
   );
 }
@@ -224,6 +214,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     justifyContent: 'center',
-    paddingVertical: 22,
+    paddingVertical: 40,
+    flex: 1,
+  },
+  attribution: {
+    fontSize: 11,
+    lineHeight: 18,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    opacity: 0.6,
   },
 });

@@ -33,7 +33,6 @@ export default function SettingsScreen() {
     setMadhab,
   } = usePrayerData();
   const {
-    capability,
     isHydrated: notificationsHydrated,
     isSyncing: isSyncingNotifications,
     lastScheduledCount,
@@ -253,17 +252,13 @@ export default function SettingsScreen() {
 
       <CollapsibleSection
         title="Notifications"
-        subtitle={
-          capability === 'web-push' ? 'Web push in supported browsers' : 'Local reminders on this device'
-        }
+        subtitle="Local reminders on this device"
       >
         <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
           <View style={styles.infoCopy}>
             <Text style={[styles.infoTitle, { color: palette.text }]}>Permission state</Text>
             <Text style={[styles.infoBody, { color: palette.subtleText }]}>
-              {capability === 'web-push'
-                ? 'Web push works when the browser supports service workers.'
-                : 'Local reminders can run on this device with bundled sounds.'}
+              {'Local reminders can run on this device with bundled sounds.'}
             </Text>
           </View>
           <Text style={[styles.infoValue, { color: palette.text }]}>

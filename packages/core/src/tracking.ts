@@ -7,11 +7,12 @@ import type {
 } from './types';
 import { createUtcAnchorFromDateKey, shiftDateKey } from './prayer';
 
-export const trackablePrayerNames: TrackablePrayerName[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+export const trackablePrayerNames: TrackablePrayerName[] = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 
 function createPrayerRecord() {
   return {
     Fajr: false,
+    Sunrise: false,
     Dhuhr: false,
     Asr: false,
     Maghrib: false,

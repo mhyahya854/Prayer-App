@@ -8,7 +8,7 @@ import 'react-native-reanimated';
 
 import { ContentDataProvider } from '@/src/content/content-provider';
 import { PrayerNotificationProvider } from '@/src/notifications/notification-provider';
-import { appNavigationThemes } from '@/src/theme/palette';
+import { useAppNavigationTheme } from '@/src/theme/palette';
 import { PrayerDataProvider } from '@/src/prayer/prayer-provider';
 import { GoogleDriveSyncProvider } from '@/src/sync/google-drive-sync-provider';
 import { AppThemeProvider, useResolvedTheme } from '@/src/theme/theme-provider';
@@ -63,9 +63,10 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const resolvedTheme = useResolvedTheme();
+  const navigationTheme = useAppNavigationTheme();
 
   return (
-    <ThemeProvider value={resolvedTheme === 'dark' ? appNavigationThemes.dark : appNavigationThemes.light}>
+    <ThemeProvider value={navigationTheme}>
       <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

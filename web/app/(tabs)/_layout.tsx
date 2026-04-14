@@ -112,6 +112,40 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="mosques"
+        options={{
+          title: 'Mosques',
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{
+                ios: 'mappin.and.ellipse',
+                android: 'location_on',
+                web: 'location_on',
+              }}
+              tintColor={color}
+              size={24}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="qibla"
+        options={{
+          title: 'Qibla',
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{
+                ios: 'location.north.line.fill',
+                android: 'explore',
+                web: 'explore',
+              }}
+              tintColor={color}
+              size={24}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

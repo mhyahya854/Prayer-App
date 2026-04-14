@@ -5,9 +5,11 @@ import {
   notificationPreReminderOptions,
   prayerAdjustmentOptions,
 } from '@prayer-app/core';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CollapsibleSection } from '@/src/components/CollapsibleSection';
+import { ThemeAccentSelector } from '@/src/components/ThemeAccentSelector';
 import { ThemeModeSelector } from '@/src/components/ThemeModeSelector';
 import { usePrayerNotifications } from '@/src/notifications/notification-provider';
 import { ManualLocationForm } from '@/src/prayer/ManualLocationForm';
@@ -18,7 +20,7 @@ import { useThemePreference } from '@/src/theme/theme-provider';
 
 export default function SettingsScreen() {
   const palette = useAppPalette();
-  const { setThemePreference, themePreference } = useThemePreference();
+  const { accentTheme, setAccentTheme, setThemePreference, themePreference } = useThemePreference();
   const {
     adjustPrayerOffset,
     isRefreshingLocation,
@@ -36,8 +38,8 @@ export default function SettingsScreen() {
     permissionState,
     preferences: notificationPreferences,
     requestPermission,
-    setPreReminderMinutes,
     setPrayerEnabled,
+    setPreReminderMinutes,
     syncError,
     syncNow,
   } = usePrayerNotifications();
@@ -52,6 +54,18 @@ export default function SettingsScreen() {
     syncError: driveSyncError,
     syncNow: syncDriveNow,
   } = useGoogleDriveSync();
+  const [use12HourTime, setUse12HourTime] = useState(true);
+  const [autoPilotEnabled, setAutoPilotEnabled] = useState(true);
+  const [autoLocationPermission, setAutoLocationPermission] = useState(true);
+  const [disableBatteryOptimization, setDisableBatteryOptimization] = useState(false);
+
+  const allPrayerNotificationsEnabled = notifiablePrayerNames.every(
+    (name) => notificationPreferences.enabledPrayers[name],
+  );
+
+  async function setAllPrayerNotifications(enabled: boolean) {
+    await Promise.all(notifiablePrayerNames.map((prayerName) => setPrayerEnabled(prayerName, enabled)));
+  }
 
   return (
     <ScrollView
@@ -85,12 +99,101 @@ export default function SettingsScreen() {
       </View>
 
       {/* Display */}
-      <CollapsibleSection title="Display" subtitle="Theme preference">
+      <CollapsibleSection
+        title="Day, Night or Auto"
+        subtitle="Please select from auto, day mode or night mode."
+        defaultExpanded
+        collapsible={false}
+      >
         <ThemeModeSelector value={themePreference} onChange={setThemePreference} />
+        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>App color</Text>
+        <ThemeAccentSelector value={accentTheme} onChange={setAccentTheme} />
       </CollapsibleSection>
 
       {/* Prayer Time Calculation */}
-      <CollapsibleSection title="Prayer Time Calculation" subtitle="Method and school of thought">
+      <CollapsibleSection title="Prayer Times" subtitle="How your prayer times should be calculated" defaultExpanded collapsible={false}>
+        <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <View style={styles.toggleCopy}>
+            <Text style={[styles.toggleTitle, { color: palette.text }]}>12-Hour Time</Text>
+            <Text style={[styles.toggleBody, { color: palette.subtleText }]}>Display prayer times in 12-hour format.</Text>
+          </View>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{ checked: use12HourTime }}
+            onPress={() => setUse12HourTime((value) => !value)}
+            style={[
+              styles.togglePill,
+              { backgroundColor: use12HourTime ? palette.accentSoft : palette.border },
+            ]}
+          >
+            <View style={[styles.toggleThumb, { alignSelf: use12HourTime ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
+          </Pressable>
+        </View>
+
+        <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <View style={styles.toggleCopy}>
+            <Text style={[styles.toggleTitle, { color: palette.text }]}>Autopilot</Text>
+            <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
+              Auto-select calculation method from your location and madhab.
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{ checked: autoPilotEnabled }}
+            onPress={() => setAutoPilotEnabled((value) => !value)}
+            style={[
+              styles.togglePill,
+              { backgroundColor: autoPilotEnabled ? palette.accentSoft : palette.border },
+            ]}
+          >
+            <View style={[styles.toggleThumb, { alignSelf: autoPilotEnabled ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
+          </Pressable>
+        </View>
+
+        <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <View style={styles.toggleCopy}>
+            <Text style={[styles.toggleTitle, { color: palette.text }]}>Automatic Location Permission</Text>
+            <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
+              Prompt and keep location permission for auto-detect.
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{ checked: autoLocationPermission }}
+            onPress={() => setAutoLocationPermission((value) => !value)}
+            style={[
+              styles.togglePill,
+              { backgroundColor: autoLocationPermission ? palette.accentSoft : palette.border },
+            ]}
+          >
+            <View style={[styles.toggleThumb, { alignSelf: autoLocationPermission ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
+          </Pressable>
+        </View>
+
+        <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <View style={styles.toggleCopy}>
+            <Text style={[styles.toggleTitle, { color: palette.text }]}>Disable Battery Optimization</Text>
+            <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
+              Helps improve background notification reliability.
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{ checked: disableBatteryOptimization }}
+            onPress={() => setDisableBatteryOptimization((value) => !value)}
+            style={[
+              styles.togglePill,
+              { backgroundColor: disableBatteryOptimization ? palette.accentSoft : palette.border },
+            ]}
+          >
+            <View style={[styles.toggleThumb, { alignSelf: disableBatteryOptimization ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
+          </Pressable>
+        </View>
+
+        <Text style={[styles.supportText, { color: palette.subtleText }]}>
+          Prayer times are based on your selected method and madhab, with optional per-prayer minute adjustments.
+        </Text>
+
         <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Calculation method</Text>
         <View style={styles.optionGrid}>
           {calculationMethodOptions.map((option) => {
@@ -149,7 +252,7 @@ export default function SettingsScreen() {
       </CollapsibleSection>
 
       {/* Fine-Tune Times */}
-      <CollapsibleSection title="Fine-Tune Times" subtitle="Adjust individual prayers by minutes">
+      <CollapsibleSection title="Fine-Tune Times" subtitle="Adjust individual prayers by minutes" defaultExpanded collapsible={false}>
         {prayerAdjustmentOptions.map((adjustment) => (
           <View key={adjustment.key} style={[styles.adjustmentRow, { borderBottomColor: palette.border }]}>
             <View style={styles.adjustmentCopy}>
@@ -179,7 +282,7 @@ export default function SettingsScreen() {
       </CollapsibleSection>
 
       {/* Your Location */}
-      <CollapsibleSection title="Your Location" subtitle="Prayer times follow the saved location">
+      <CollapsibleSection title="Your Location" subtitle="Prayer times follow the saved location" defaultExpanded collapsible={false}>
         <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
           <View style={styles.infoCopy}>
             <Text style={[styles.infoTitle, { color: palette.text }]}>Saved location</Text>
@@ -242,8 +345,10 @@ export default function SettingsScreen() {
 
       {/* Prayer Reminders */}
       <CollapsibleSection
-        title="Prayer Reminders"
-        subtitle="Alerts and reminder timing"
+        title="Notifications"
+        subtitle="Please select which types of notifications you would like to receive."
+        defaultExpanded
+        collapsible={false}
       >
         {/* Permission state — shown only if not yet granted */}
         {notificationsHydrated && permissionState !== 'granted' ? (
@@ -265,61 +370,92 @@ export default function SettingsScreen() {
           </View>
         ) : null}
 
-        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Which prayers</Text>
-        <View style={styles.optionGrid}>
-          {notifiablePrayerNames.map((prayerName) => {
-            const isActive = notificationPreferences.enabledPrayers[prayerName];
-            return (
+        <View style={styles.reminderGrid}>
+          <View
+            style={[
+              styles.reminderColumn,
+              styles.reminderColumnFull,
+              { backgroundColor: palette.hero, borderColor: palette.border },
+            ]}
+          >
+            <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <View style={styles.toggleCopy}>
+                <Text style={[styles.toggleTitle, { color: palette.text }]}>Prayer Times</Text>
+                <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
+                  Enable alerts for all prayers at once.
+                </Text>
+              </View>
               <Pressable
-                key={prayerName}
                 accessibilityRole="switch"
-                accessibilityState={{ checked: isActive }}
-                onPress={() => void setPrayerEnabled(prayerName, !isActive)}
+                accessibilityState={{ checked: allPrayerNotificationsEnabled }}
+                onPress={() => void setAllPrayerNotifications(!allPrayerNotificationsEnabled)}
                 style={[
-                  styles.optionCard,
-                  {
-                    backgroundColor: isActive ? palette.accentSoft : palette.surface,
-                    borderColor: isActive ? palette.accent : palette.border,
-                  },
+                  styles.togglePill,
+                  { backgroundColor: allPrayerNotificationsEnabled ? palette.accentSoft : palette.border },
                 ]}
               >
-                <Text style={[styles.optionTitle, { color: isActive ? palette.accent : palette.text }]}>
-                  {prayerName}
-                </Text>
-                <Text style={[styles.optionDescription, { color: isActive ? palette.accent : palette.subtleText }]}>
-                  {isActive ? 'Alert on' : 'Alert off'}
-                </Text>
+                <View style={[styles.toggleThumb, { alignSelf: allPrayerNotificationsEnabled ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
               </Pressable>
-            );
-          })}
-        </View>
+            </View>
 
-        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Reminder lead time</Text>
-        <View style={styles.optionGrid}>
-          {notificationPreReminderOptions.map((option) => {
-            const isActive = option.value === notificationPreferences.preReminderMinutes;
-            return (
+            <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <View style={styles.toggleCopy}>
+                <Text style={[styles.toggleTitle, { color: palette.text }]}>Disable Battery Optimization</Text>
+                <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
+                  Follow phone guidance so prayer alerts are delivered on time.
+                </Text>
+              </View>
               <Pressable
-                key={option.label}
-                accessibilityRole="button"
-                onPress={() => void setPreReminderMinutes(option.value)}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: disableBatteryOptimization }}
+                onPress={() => setDisableBatteryOptimization((value) => !value)}
                 style={[
-                  styles.optionCard,
-                  {
-                    backgroundColor: isActive ? palette.accentSoft : palette.surface,
-                    borderColor: isActive ? palette.accent : palette.border,
-                  },
+                  styles.togglePill,
+                  { backgroundColor: disableBatteryOptimization ? palette.accentSoft : palette.border },
                 ]}
               >
-                <Text style={[styles.optionTitle, { color: isActive ? palette.accent : palette.text }]}>
-                  {option.label}
-                </Text>
-                <Text style={[styles.optionDescription, { color: isActive ? palette.accent : palette.subtleText }]}>
-                  {option.value ? 'Reminder before prayer' : 'Alert at prayer time only'}
-                </Text>
+                <View style={[styles.toggleThumb, { alignSelf: disableBatteryOptimization ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
               </Pressable>
-            );
-          })}
+            </View>
+          </View>
+          <View
+            style={[
+              styles.reminderColumn,
+              styles.reminderColumnFull,
+              { backgroundColor: palette.hero, borderColor: palette.border },
+            ]}
+          >
+            <Text style={[styles.supportText, { color: palette.subtleText }]}>
+              Individual prayer alerts are now controlled on the Home prayer list using the bell icon next to each prayer.
+            </Text>
+            <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Reminder lead time</Text>
+            <View style={styles.optionGrid}>
+              {notificationPreReminderOptions.map((option) => {
+                const isActive = option.value === notificationPreferences.preReminderMinutes;
+                return (
+                  <Pressable
+                    key={option.label}
+                    accessibilityRole="button"
+                    onPress={() => void setPreReminderMinutes(option.value)}
+                    style={[
+                      styles.optionCard,
+                      {
+                        backgroundColor: isActive ? palette.accentSoft : palette.surface,
+                        borderColor: isActive ? palette.accent : palette.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.optionTitle, { color: isActive ? palette.accent : palette.text }]}>
+                      {option.label}
+                    </Text>
+                    <Text style={[styles.optionDescription, { color: isActive ? palette.accent : palette.subtleText }]}>
+                      {option.value ? 'Reminder before prayer' : 'Alert at prayer time only'}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
         </View>
 
         <Pressable
@@ -336,7 +472,7 @@ export default function SettingsScreen() {
         ) : null}
       </CollapsibleSection>
       {/* Backup & Sync */}
-      <CollapsibleSection title="Backup &amp; Sync" subtitle="Google Drive backup and restore">
+      <CollapsibleSection title="Backup &amp; Sync" subtitle="Google Drive backup and restore" defaultExpanded collapsible={false}>
         <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
           <View style={styles.infoCopy}>
             <Text style={[styles.infoTitle, { color: palette.text }]}>Google account</Text>
@@ -445,6 +581,56 @@ const styles = StyleSheet.create({
   },
   optionGrid: {
     gap: 8,
+  },
+  toggleRow: {
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 0.5,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  toggleCopy: {
+    flex: 1,
+    gap: 2,
+    paddingRight: 8,
+  },
+  toggleTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  toggleBody: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  togglePill: {
+    borderRadius: 999,
+    height: 24,
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    width: 42,
+  },
+  toggleThumb: {
+    borderRadius: 999,
+    height: 18,
+    width: 18,
+    alignSelf: 'flex-end',
+  },
+  reminderGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  reminderColumn: {
+    flex: 1,
+    minWidth: 300,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    padding: 10,
+  },
+  reminderColumnFull: {
+    minWidth: '100%',
   },
   optionCard: {
     borderRadius: 14,

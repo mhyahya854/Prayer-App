@@ -5,8 +5,15 @@ import { useEffect, useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 
 import { SectionCard } from '@/src/components/SectionCard';
+import {
+  getArabicFontFamily,
+  getArabicLineHeightMultiplier,
+  quranScriptStyleOptions,
+  type QuranScriptStyle,
+} from '@/src/content/quran-display-style';
 import { useContentData } from '@/src/content/content-provider';
 import type { QuranChapterDetail } from '@/src/content/types';
+import { loadQuranScriptStyle, saveQuranScriptStyle } from '@/src/lib/storage/quran-display-storage';
 import { useAppPalette } from '@/src/theme/palette';
 import { useGoogleDriveSync } from '@/src/sync/google-drive-sync-provider';
 
@@ -22,6 +29,36 @@ export default function QuranChapterScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [scriptStyle, setScriptStyle] = useState<QuranScriptStyle>('uthmani');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void loadQuranScriptStyle().then((storedStyle) => {
+      if (isMounted) {
+        setScriptStyle(storedStyle);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  async function handleSetScriptStyle(nextStyle: QuranScriptStyle) {
+    setScriptStyle(nextStyle);
+    await saveQuranScriptStyle(nextStyle);
+  }
+
+  const titleArabicStyle = {
+    fontFamily: getArabicFontFamily(scriptStyle),
+    lineHeight: Math.round(22 * getArabicLineHeightMultiplier(scriptStyle)),
+  };
+
+  const verseArabicStyle = {
+    fontFamily: getArabicFontFamily(scriptStyle),
+    lineHeight: Math.round(25 * getArabicLineHeightMultiplier(scriptStyle)),
+  };
 
   useEffect(() => {
     if (!isReady || Number.isNaN(parsedChapterId)) {
@@ -147,7 +184,7 @@ export default function QuranChapterScreen() {
           <>
             <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
               <Text style={[styles.title, { color: palette.text }]}>{chapterDetail.transliteration}</Text>
-              <Text style={[styles.arabicTitle, { color: palette.text }]}>{chapterDetail.arabicName}</Text>
+              <Text style={[styles.arabicTitle, { color: palette.text }, titleArabicStyle]}>{chapterDetail.arabicName}</Text>
               <Text style={[styles.copy, { color: palette.subtleText }]}>
                 {chapterDetail.translation} | {chapterDetail.type} | {chapterDetail.totalVerses} ayat
               </Text>
@@ -178,6 +215,29 @@ export default function QuranChapterScreen() {
             </View>
 
             <SectionCard title="Reader" subtitle="Resume later or save a verse">
+              <View style={styles.scriptRow}>
+                {quranScriptStyleOptions.map((option) => {
+                  const isActive = option.id === scriptStyle;
+                  return (
+                    <Pressable
+                      key={option.id}
+                      accessibilityRole="button"
+                      onPress={() => void handleSetScriptStyle(option.id)}
+                      style={[
+                        styles.scriptChip,
+                        {
+                          backgroundColor: isActive ? palette.accentSoft : palette.surface,
+                          borderColor: isActive ? palette.accent : palette.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.scriptChipText, { color: isActive ? palette.accent : palette.text }]}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
               {chapterDetail.verses.map((verse) => {
                 const isRequestedVerse = requestedVerseId === verse.verseId;
                 const backgroundColor = verse.isLastRead || isRequestedVerse ? palette.highlight : palette.surface;
@@ -209,7 +269,7 @@ export default function QuranChapterScreen() {
                       </View>
                     </View>
 
-                    <Text style={[styles.arabicVerse, { color: palette.text }]}>{verse.arabicText}</Text>
+                    <Text style={[styles.arabicVerse, { color: palette.text }, verseArabicStyle]}>{verse.arabicText}</Text>
                     <Text style={[styles.transliteration, { color: palette.subtleText }]}>{verse.transliteration}</Text>
                     <Text style={[styles.translation, { color: palette.text }]}>{verse.translation}</Text>
 
@@ -336,8 +396,24 @@ const styles = StyleSheet.create({
   },
   arabicVerse: {
     fontSize: 25,
-    lineHeight: 40,
+    lineHeight: 45,
     textAlign: 'right',
+  },
+  scriptRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  scriptChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  scriptChipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   transliteration: {
     fontSize: 13,

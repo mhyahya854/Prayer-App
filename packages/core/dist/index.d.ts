@@ -1,5 +1,5 @@
 type PrayerName = 'Fajr' | 'Sunrise' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha';
-type TrackablePrayerName = Exclude<PrayerName, 'Sunrise'>;
+type TrackablePrayerName = PrayerName;
 type NotifiablePrayerName = TrackablePrayerName;
 type AppPlatform = 'android' | 'ios' | 'web';
 type AppThemePreference = 'light' | 'dark' | 'system';
@@ -243,6 +243,16 @@ interface GoogleDriveBackupUpsertResponse {
     fileId: string;
     modifiedAt: string;
 }
+interface GoogleDriveExportDocumentRequest {
+    folderName: string;
+    fileName: string;
+    content: string;
+    mimeType: string;
+}
+interface GoogleDriveExportDocumentResponse {
+    fileId: string;
+    webViewLink?: string;
+}
 interface OverviewResponse {
     overview: AppOverview;
     modules: CoreModule[];
@@ -296,7 +306,7 @@ declare const notificationPreReminderOptions: Array<{
     label: string;
     value: PrayerPreReminderMinutes;
 }>;
-declare const notifiablePrayerNames: TrackablePrayerName[];
+declare const notifiablePrayerNames: ("Fajr" | "Sunrise" | "Dhuhr" | "Asr" | "Maghrib" | "Isha")[];
 declare function getDefaultPrayerNotificationPreferences(): PrayerNotificationPreferences;
 declare function isNotifiablePrayerName(prayerName: string): prayerName is NotifiablePrayerName;
 declare function createPrayerNotificationScheduleJobs(prayerDay: PrayerDay, preferences: PrayerNotificationPreferences, now?: Date): NotificationScheduleJob[];
@@ -351,6 +361,7 @@ declare function setPrayerCompletion(store: PrayerLogStore, dateKey: string, pra
     [x: string]: PrayerLogDay | {
         prayers: {
             Fajr: boolean;
+            Sunrise: boolean;
             Dhuhr: boolean;
             Asr: boolean;
             Maghrib: boolean;
@@ -361,4 +372,4 @@ declare function setPrayerCompletion(store: PrayerLogStore, dateKey: string, pra
 };
 declare function calculatePrayerMetrics(store: PrayerLogStore, todayKey: string): PrayerProgressSummary;
 
-export { type ApiErrorResponse, type ApiHealthResponse, type AppOverview, type AppPlatform, type AppThemePreference, type CalculationMethodId, type Coordinates, type CoreModule, type DashboardResponse, type DuaCollection, type DuaCollectionsResponse, type FeaturedQuranResponse, type GoogleDriveAccount, type GoogleDriveAuthCompleteRequest, type GoogleDriveAuthCompleteResponse, type GoogleDriveAuthStartRequest, type GoogleDriveAuthStartResponse, type GoogleDriveBackupFetchResponse, type GoogleDriveBackupUpsertRequest, type GoogleDriveBackupUpsertResponse, type GoogleDriveSessionResponse, type IntegrationItem, type MadhabId, type NotifiablePrayerName, type NotificationDisableRequest, type NotificationPermissionState, type NotificationRefreshRequest, type NotificationScheduleJob, type NotificationScheduleJobKind, type NotificationSyncRequest, type NotificationSyncResponse, type OverviewResponse, type PersonalSettingPreview, type PrayerAdjustmentMap, type PrayerAppBackupPayload, type PrayerDay, type PrayerHistoryDay, type PrayerLogDay, type PrayerLogStore, type PrayerName, type PrayerNotificationPreferences, type PrayerPreReminderMinutes, type PrayerPreferences, type PrayerProgressSummary, type PrayerTime, type PrayerTimesResponse, type RoadmapMilestone, type RuntimeResponse, type SavedLocation, type SurahPreview, type TimeZoneSource, type TimestampedValue, type TrackablePrayerName, type WebPushSubscriptionInput, type WorshipMetric, appOverview, calculatePrayerMetrics, calculationMethodOptions, computePrayerDay, coreModules, createCalendarDateFromDateKey, createPrayerAppBackupPayload, createPrayerLogDay, createPrayerNotificationScheduleJobs, createRollingPrayerNotificationSchedule, createSavedLocation, createTimestampedValue, createUtcAnchorFromDateKey, duaCollections, featuredSurahs, formatDateKey, getDefaultPrayerNotificationPreferences, getDefaultPrayerPreferences, getDefaultThemePreference, hasMeaningfulPrayerAppBackupData, integrationsChecklist, isNotifiablePrayerName, isTrackablePrayerName, madhabOptions, mergePrayerAppBackupPayload, mergePrayerLogStores, mergeTimestampedValue, notifiablePrayerNames, notificationPreReminderOptions, parseDateKeyParts, personalSettingsPreview, prayerAdjustmentOptions, prayerAppBackupVersion, roadmapMilestones, setPrayerCompletion, shiftDateKey, syncEpochTimestamp, todayPrayerSchedule, trackablePrayerNames, worshipMetrics };
+export { type ApiErrorResponse, type ApiHealthResponse, type AppOverview, type AppPlatform, type AppThemePreference, type CalculationMethodId, type Coordinates, type CoreModule, type DashboardResponse, type DuaCollection, type DuaCollectionsResponse, type FeaturedQuranResponse, type GoogleDriveAccount, type GoogleDriveAuthCompleteRequest, type GoogleDriveAuthCompleteResponse, type GoogleDriveAuthStartRequest, type GoogleDriveAuthStartResponse, type GoogleDriveBackupFetchResponse, type GoogleDriveBackupUpsertRequest, type GoogleDriveBackupUpsertResponse, type GoogleDriveExportDocumentRequest, type GoogleDriveExportDocumentResponse, type GoogleDriveSessionResponse, type IntegrationItem, type MadhabId, type NotifiablePrayerName, type NotificationDisableRequest, type NotificationPermissionState, type NotificationRefreshRequest, type NotificationScheduleJob, type NotificationScheduleJobKind, type NotificationSyncRequest, type NotificationSyncResponse, type OverviewResponse, type PersonalSettingPreview, type PrayerAdjustmentMap, type PrayerAppBackupPayload, type PrayerDay, type PrayerHistoryDay, type PrayerLogDay, type PrayerLogStore, type PrayerName, type PrayerNotificationPreferences, type PrayerPreReminderMinutes, type PrayerPreferences, type PrayerProgressSummary, type PrayerTime, type PrayerTimesResponse, type RoadmapMilestone, type RuntimeResponse, type SavedLocation, type SurahPreview, type TimeZoneSource, type TimestampedValue, type TrackablePrayerName, type WebPushSubscriptionInput, type WorshipMetric, appOverview, calculatePrayerMetrics, calculationMethodOptions, computePrayerDay, coreModules, createCalendarDateFromDateKey, createPrayerAppBackupPayload, createPrayerLogDay, createPrayerNotificationScheduleJobs, createRollingPrayerNotificationSchedule, createSavedLocation, createTimestampedValue, createUtcAnchorFromDateKey, duaCollections, featuredSurahs, formatDateKey, getDefaultPrayerNotificationPreferences, getDefaultPrayerPreferences, getDefaultThemePreference, hasMeaningfulPrayerAppBackupData, integrationsChecklist, isNotifiablePrayerName, isTrackablePrayerName, madhabOptions, mergePrayerAppBackupPayload, mergePrayerLogStores, mergeTimestampedValue, notifiablePrayerNames, notificationPreReminderOptions, parseDateKeyParts, personalSettingsPreview, prayerAdjustmentOptions, prayerAppBackupVersion, roadmapMilestones, setPrayerCompletion, shiftDateKey, syncEpochTimestamp, todayPrayerSchedule, trackablePrayerNames, worshipMetrics };

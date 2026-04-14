@@ -78,12 +78,17 @@ function createInstallationId() {
   return `install_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function mapNativePermissionStatus(status: Notifications.PermissionStatus): NotificationPermissionState {
-  if (status === Notifications.PermissionStatus.GRANTED) {
+function mapNativePermissionStatus(permissions: unknown): NotificationPermissionState {
+  const value =
+    typeof permissions === 'object' && permissions !== null
+      ? (permissions as Record<string, unknown>)
+      : {};
+
+  if (value.granted === true || value.status === Notifications.PermissionStatus.GRANTED) {
     return 'granted';
   }
 
-  if (status === Notifications.PermissionStatus.DENIED) {
+  if (value.canAskAgain === false || value.status === Notifications.PermissionStatus.DENIED) {
     return 'denied';
   }
 
@@ -170,7 +175,7 @@ export function PrayerNotificationProvider({ children }: PropsWithChildren) {
       await configureAndroidChannels();
 
       if (isMounted) {
-        setPermissionState(mapNativePermissionStatus(permissions.status));
+        setPermissionState(mapNativePermissionStatus(permissions));
         setIsHydrated(true);
       }
     }
@@ -259,7 +264,7 @@ export function PrayerNotificationProvider({ children }: PropsWithChildren) {
     setSyncError(null);
 
     const result = await Notifications.requestPermissionsAsync();
-    const nextState = mapNativePermissionStatus(result.status);
+    const nextState = mapNativePermissionStatus(result);
     setPermissionState(nextState);
 
     if (nextState === 'granted') {
@@ -303,7 +308,7 @@ export function PrayerNotificationProvider({ children }: PropsWithChildren) {
       }
 
       void Notifications.getPermissionsAsync().then((permissions) => {
-        setPermissionState(mapNativePermissionStatus(permissions.status));
+        setPermissionState(mapNativePermissionStatus(permissions));
       });
 
       void syncNow();

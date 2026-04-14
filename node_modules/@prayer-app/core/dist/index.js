@@ -258,11 +258,137 @@ function computePrayerDay({
   };
 }
 
+// src/notifications.ts
+var notificationPreReminderOptions = [
+  { label: "Off", value: null },
+  { label: "10 min", value: 10 },
+  { label: "15 min", value: 15 },
+  { label: "20 min", value: 20 },
+  { label: "30 min", value: 30 }
+];
+var notifiablePrayerNames = [
+  "Fajr",
+  "Sunrise",
+  "Dhuhr",
+  "Asr",
+  "Maghrib",
+  "Isha"
+];
+function getDefaultPrayerNotificationPreferences() {
+  return {
+    enabledPrayers: {
+      Fajr: true,
+      Sunrise: true,
+      Dhuhr: true,
+      Asr: true,
+      Maghrib: true,
+      Isha: true
+    },
+    preReminderMinutes: null
+  };
+}
+function isNotifiablePrayerName(prayerName) {
+  return notifiablePrayerNames.includes(prayerName);
+}
+function createPrayerNotificationScheduleJobs(prayerDay, preferences, now = /* @__PURE__ */ new Date()) {
+  const jobs = [];
+  for (const prayer of prayerDay.prayers) {
+    if (!isNotifiablePrayerName(prayer.name) || !prayer.isoTime) {
+      continue;
+    }
+    if (!preferences.enabledPrayers[prayer.name]) {
+      continue;
+    }
+    const prayerDate = new Date(prayer.isoTime);
+    if (Number.isNaN(prayerDate.getTime())) {
+      continue;
+    }
+    const dateKey = formatDateKey(prayerDate, prayerDay.timeZone);
+    const startJob = createScheduleJob({
+      city: prayerDay.city,
+      dateKey,
+      fireAt: prayerDate,
+      kind: "prayer-start",
+      prayerName: prayer.name,
+      prayerTimeLabel: prayer.time
+    });
+    if (prayerDate.getTime() > now.getTime()) {
+      jobs.push(startJob);
+    }
+    if (!preferences.preReminderMinutes) {
+      continue;
+    }
+    const reminderDate = new Date(prayerDate.getTime() - preferences.preReminderMinutes * 6e4);
+    if (reminderDate.getTime() <= now.getTime()) {
+      continue;
+    }
+    jobs.push(
+      createScheduleJob({
+        city: prayerDay.city,
+        dateKey,
+        fireAt: reminderDate,
+        kind: "pre-reminder",
+        preReminderMinutes: preferences.preReminderMinutes,
+        prayerName: prayer.name,
+        prayerTimeLabel: prayer.time
+      })
+    );
+  }
+  return jobs.sort((left, right) => Date.parse(left.fireAt) - Date.parse(right.fireAt));
+}
+function createRollingPrayerNotificationSchedule({
+  notificationPreferences,
+  now = /* @__PURE__ */ new Date(),
+  prayerPreferences,
+  savedLocation,
+  startDateKey,
+  windowDays = 5
+}) {
+  const jobs = [];
+  for (let offset = 0; offset < windowDays; offset += 1) {
+    const dateKey = shiftDateKey(startDateKey, offset);
+    const prayerDay = computePrayerDay({
+      coordinates: savedLocation.coordinates,
+      dateKey,
+      locationLabel: savedLocation.label,
+      now,
+      preferences: prayerPreferences,
+      timeZone: savedLocation.timeZone
+    });
+    jobs.push(...createPrayerNotificationScheduleJobs(prayerDay, notificationPreferences, now));
+  }
+  return jobs.sort((left, right) => Date.parse(left.fireAt) - Date.parse(right.fireAt));
+}
+function createScheduleJob({
+  city,
+  dateKey,
+  fireAt,
+  kind,
+  preReminderMinutes,
+  prayerName,
+  prayerTimeLabel
+}) {
+  const isPrayerStart = kind === "prayer-start";
+  return {
+    body: isPrayerStart ? `It's time for ${prayerName} in ${city}.` : `${prayerName} begins in ${preReminderMinutes} minutes at ${prayerTimeLabel}.`,
+    channelId: kind,
+    city,
+    dateKey,
+    fireAt: fireAt.toISOString(),
+    id: `${dateKey}:${prayerName}:${kind}`,
+    kind,
+    prayerName,
+    soundKey: isPrayerStart ? "athan" : "reminder",
+    title: isPrayerStart ? `${prayerName} Time` : `${prayerName} Soon`
+  };
+}
+
 // src/tracking.ts
-var trackablePrayerNames = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+var trackablePrayerNames = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"];
 function createPrayerRecord() {
   return {
     Fajr: false,
+    Sunrise: false,
     Dhuhr: false,
     Asr: false,
     Maghrib: false,
@@ -367,123 +493,6 @@ function calculatePrayerMetrics(store, todayKey) {
     ),
     recentDays,
     totalTrackablePrayers: trackablePrayerNames.length
-  };
-}
-
-// src/notifications.ts
-var notificationPreReminderOptions = [
-  { label: "Off", value: null },
-  { label: "10 min", value: 10 },
-  { label: "15 min", value: 15 },
-  { label: "20 min", value: 20 },
-  { label: "30 min", value: 30 }
-];
-var notifiablePrayerNames = [...trackablePrayerNames];
-function getDefaultPrayerNotificationPreferences() {
-  return {
-    enabledPrayers: {
-      Fajr: true,
-      Dhuhr: true,
-      Asr: true,
-      Maghrib: true,
-      Isha: true
-    },
-    preReminderMinutes: null
-  };
-}
-function isNotifiablePrayerName(prayerName) {
-  return isTrackablePrayerName(prayerName);
-}
-function createPrayerNotificationScheduleJobs(prayerDay, preferences, now = /* @__PURE__ */ new Date()) {
-  const jobs = [];
-  for (const prayer of prayerDay.prayers) {
-    if (!isNotifiablePrayerName(prayer.name) || !prayer.isoTime) {
-      continue;
-    }
-    if (!preferences.enabledPrayers[prayer.name]) {
-      continue;
-    }
-    const prayerDate = new Date(prayer.isoTime);
-    if (Number.isNaN(prayerDate.getTime())) {
-      continue;
-    }
-    const dateKey = formatDateKey(prayerDate, prayerDay.timeZone);
-    const startJob = createScheduleJob({
-      city: prayerDay.city,
-      dateKey,
-      fireAt: prayerDate,
-      kind: "prayer-start",
-      prayerName: prayer.name,
-      prayerTimeLabel: prayer.time
-    });
-    if (prayerDate.getTime() > now.getTime()) {
-      jobs.push(startJob);
-    }
-    if (!preferences.preReminderMinutes) {
-      continue;
-    }
-    const reminderDate = new Date(prayerDate.getTime() - preferences.preReminderMinutes * 6e4);
-    if (reminderDate.getTime() <= now.getTime()) {
-      continue;
-    }
-    jobs.push(
-      createScheduleJob({
-        city: prayerDay.city,
-        dateKey,
-        fireAt: reminderDate,
-        kind: "pre-reminder",
-        preReminderMinutes: preferences.preReminderMinutes,
-        prayerName: prayer.name,
-        prayerTimeLabel: prayer.time
-      })
-    );
-  }
-  return jobs.sort((left, right) => Date.parse(left.fireAt) - Date.parse(right.fireAt));
-}
-function createRollingPrayerNotificationSchedule({
-  notificationPreferences,
-  now = /* @__PURE__ */ new Date(),
-  prayerPreferences,
-  savedLocation,
-  startDateKey,
-  windowDays = 5
-}) {
-  const jobs = [];
-  for (let offset = 0; offset < windowDays; offset += 1) {
-    const dateKey = shiftDateKey(startDateKey, offset);
-    const prayerDay = computePrayerDay({
-      coordinates: savedLocation.coordinates,
-      dateKey,
-      locationLabel: savedLocation.label,
-      now,
-      preferences: prayerPreferences,
-      timeZone: savedLocation.timeZone
-    });
-    jobs.push(...createPrayerNotificationScheduleJobs(prayerDay, notificationPreferences, now));
-  }
-  return jobs.sort((left, right) => Date.parse(left.fireAt) - Date.parse(right.fireAt));
-}
-function createScheduleJob({
-  city,
-  dateKey,
-  fireAt,
-  kind,
-  preReminderMinutes,
-  prayerName,
-  prayerTimeLabel
-}) {
-  const isPrayerStart = kind === "prayer-start";
-  return {
-    body: isPrayerStart ? `It's time for ${prayerName} in ${city}.` : `${prayerName} begins in ${preReminderMinutes} minutes at ${prayerTimeLabel}.`,
-    channelId: kind,
-    city,
-    dateKey,
-    fireAt: fireAt.toISOString(),
-    id: `${dateKey}:${prayerName}:${kind}`,
-    kind,
-    prayerName,
-    soundKey: isPrayerStart ? "athan" : "reminder",
-    title: isPrayerStart ? `${prayerName} Time` : `${prayerName} Soon`
   };
 }
 

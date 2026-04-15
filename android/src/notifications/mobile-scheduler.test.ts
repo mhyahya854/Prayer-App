@@ -48,7 +48,7 @@ test('buildRollingNotificationSchedule builds a five-day prayer reminder window'
     startDateKey: '2026-03-25',
   });
 
-  assert.equal(jobs.length, 50);
+  assert.equal(jobs.length, 60);
   assert.equal(jobs[0]?.kind, 'pre-reminder');
   assert.equal(jobs.at(-1)?.prayerName, 'Isha');
 });
@@ -205,7 +205,7 @@ test('pre-reminder changes expand the scheduled window without changing prayer-s
   });
 
   assert.equal(withReminders.filter((job) => job.kind === 'prayer-start').length, withoutReminders.length);
-  assert.equal(withReminders.filter((job) => job.kind === 'pre-reminder').length, 25);
+  assert.equal(withReminders.filter((job) => job.kind === 'pre-reminder').length, 30);
 });
 
 test('location changes regenerate the schedule for the new city and timezone', () => {

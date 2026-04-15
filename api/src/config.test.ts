@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createApiConfig, getApiConfigValidationErrors } from './config';
+import {
+  createApiConfig,
+  getApiConfigValidationErrors,
+  getApiEnvironmentValidationErrors,
+} from './config';
 
 test('createApiConfig falls back to safe numeric defaults when env values are invalid', () => {
   const config = createApiConfig({
@@ -40,6 +44,31 @@ test('production config validation reports missing notification infrastructure',
   assert.equal(errors.some((error) => error.includes('GOOGLE_REDIRECT_URI')), false);
 });
 
+test('staging config validation uses the same strict requirements as production', () => {
+  const config = createApiConfig({
+    ALLOWED_ORIGINS: '',
+    APP_STAGE: 'staging',
+    DATABASE_URL: '',
+    GOOGLE_CLIENT_ID: '',
+    GOOGLE_CLIENT_SECRET: '',
+    GOOGLE_REDIRECT_URI: '',
+    WEB_PUSH_PRIVATE_KEY: '',
+    WEB_PUSH_PUBLIC_KEY: '',
+    WEB_PUSH_SUBJECT: '',
+  });
+
+  const errors = getApiConfigValidationErrors(config);
+
+  assert.equal(errors.some((error) => error.includes('DATABASE_URL')), true);
+  assert.equal(errors.some((error) => error.includes('ALLOWED_ORIGINS')), true);
+  assert.equal(errors.some((error) => error.includes('WEB_PUSH_PUBLIC_KEY')), true);
+  assert.equal(errors.some((error) => error.includes('WEB_PUSH_PRIVATE_KEY')), true);
+  assert.equal(errors.some((error) => error.includes('WEB_PUSH_SUBJECT')), true);
+  assert.equal(errors.some((error) => error.includes('GOOGLE_CLIENT_ID')), true);
+  assert.equal(errors.some((error) => error.includes('GOOGLE_CLIENT_SECRET')), true);
+  assert.equal(errors.some((error) => error.includes('GOOGLE_REDIRECT_URI')), true);
+});
+
 test('production config validation reports missing Google Drive sync credentials', () => {
   const config = createApiConfig({
     ALLOWED_ORIGINS: 'https://prayer-app.example',
@@ -63,4 +92,38 @@ test('production config validation reports missing Google Drive sync credentials
   assert.equal(errors.some((error) => error.includes('WEB_PUSH_PUBLIC_KEY')), false);
   assert.equal(errors.some((error) => error.includes('WEB_PUSH_PRIVATE_KEY')), false);
   assert.equal(errors.some((error) => error.includes('WEB_PUSH_SUBJECT')), false);
+});
+
+test('environment validation rejects invalid APP_STAGE values', () => {
+  const errors = getApiEnvironmentValidationErrors({
+    APP_STAGE: 'prod',
+  });
+
+  assert.equal(
+    errors.some((error) => error.includes('APP_STAGE must be one of "development", "staging", or "production".')),
+    true,
+  );
+});
+
+test('environment validation requires APP_STAGE when NODE_ENV is production', () => {
+  const errors = getApiEnvironmentValidationErrors({
+    NODE_ENV: 'production',
+  });
+
+  assert.equal(
+    errors.some((error) => error.includes('APP_STAGE is required when NODE_ENV=production')),
+    true,
+  );
+});
+
+test('environment validation disallows development stage when NODE_ENV is production', () => {
+  const errors = getApiEnvironmentValidationErrors({
+    APP_STAGE: 'development',
+    NODE_ENV: 'production',
+  });
+
+  assert.equal(
+    errors.some((error) => error.includes('APP_STAGE cannot be "development" when NODE_ENV=production.')),
+    true,
+  );
 });

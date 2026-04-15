@@ -2,7 +2,7 @@
 
 Date: 2026-03-26
 
-Legacy note: this document was written before the app split. Old `apps/mobile/...` path references now map to the independent `apps/android`, `apps/ios`, and `apps/web` workspaces.
+Legacy note: this document predates the app split. Historical monorepo path references now map to top-level `android`, `ios`, `web`, and `api` workspaces.
 
 ## Canonical Artifact
 
@@ -16,9 +16,14 @@ Legacy note: this document was written before the app split. Old `apps/mobile/..
 - `npm run test:android`: PASS
 - `npm run test:ios`: PASS
 - `npm run test:web`: PASS
+- `npm run preflight`: PASS
 - `npm run verify:fresh`: PASS
 - `npm run pack:source`: PASS
 - `npm run verify:fresh` currently shows deprecation warnings from older transitive packages, but the install ends with `found 0 vulnerabilities`.
+
+Release-only gate status:
+
+- `npm run preflight:release`: FAIL on this machine (expected) because production env values are not present and launch audio is still marked as placeholder/not approved for polished public release.
 
 Latest dependency remediation:
 
@@ -51,12 +56,12 @@ Disposition:
 
 | Variable | App | Used In | Required For | If Missing |
 | --- | --- | --- | --- | --- |
-| `DATABASE_URL` | API | `apps/api/src/config.ts`, `apps/api/src/notifications/store.ts` | Durable web push subscriptions, installation profiles, and queued jobs | API falls back to in-memory notification storage; subscriptions/jobs are lost on restart and are not multi-instance safe |
-| `WEB_PUSH_PUBLIC_KEY` | API | `apps/api/src/config.ts`, `apps/api/src/notifications/service.ts` | Server-side VAPID identity for web push | Web push sender is not fully configured; server will not deliver browser push jobs |
-| `WEB_PUSH_PRIVATE_KEY` | API | `apps/api/src/config.ts`, `apps/api/src/notifications/service.ts` | Server-side VAPID signing for web push | Web push sender is not fully configured; queued jobs cannot be delivered |
-| `WEB_PUSH_SUBJECT` | API | `apps/api/src/config.ts`, `apps/api/src/notifications/service.ts` | Production contact identity for VAPID | API falls back to a local placeholder address; not suitable for real production delivery/contact metadata |
-| `EXPO_PUBLIC_WEB_PUSH_PUBLIC_KEY` | Web app | `apps/mobile/src/config/app-config.ts`, `apps/mobile/src/notifications/notification-provider.tsx` | Browser push subscription creation | Web notification enablement throws before subscription sync; web push cannot be turned on |
-| `ALLOWED_ORIGINS` | API | `apps/api/src/config.ts`, `apps/api/src/index.ts` | Production browser access to `/api/runtime` and `/api/notifications/web/*` | Browser requests are blocked by production CORS; web push sync/refresh/disable fails |
+| `DATABASE_URL` | API | `api/src/config.ts`, `api/src/notifications/store.ts` | Durable web push subscriptions, installation profiles, and queued jobs | API falls back to in-memory notification storage; subscriptions/jobs are lost on restart and are not multi-instance safe |
+| `WEB_PUSH_PUBLIC_KEY` | API | `api/src/config.ts`, `api/src/notifications/service.ts` | Server-side VAPID identity for web push | Web push sender is not fully configured; server will not deliver browser push jobs |
+| `WEB_PUSH_PRIVATE_KEY` | API | `api/src/config.ts`, `api/src/notifications/service.ts` | Server-side VAPID signing for web push | Web push sender is not fully configured; queued jobs cannot be delivered |
+| `WEB_PUSH_SUBJECT` | API | `api/src/config.ts`, `api/src/notifications/service.ts` | Production contact identity for VAPID | API falls back to a local placeholder address; not suitable for real production delivery/contact metadata |
+| `EXPO_PUBLIC_WEB_PUSH_PUBLIC_KEY` | Web app | `web/src/config/app-config.ts`, `web/src/notifications/notification-provider.tsx` | Browser push subscription creation | Web notification enablement throws before subscription sync; web push cannot be turned on |
+| `ALLOWED_ORIGINS` | API | `api/src/config.ts`, `api/src/index.ts` | Production browser access to `/api/runtime` and `/api/notifications/web/*` | Browser requests are blocked by production CORS; web push sync/refresh/disable fails |
 
 Notes:
 
@@ -89,21 +94,21 @@ Smoke status:
 
 | Scenario | Status | Evidence |
 | --- | --- | --- |
-| Mobile notification permission denied | Verified by automated test | `apps/mobile/src/notifications/mobile-scheduler.test.ts` covers denied permission producing zero jobs |
-| Mobile notification permission allowed | Verified by automated test | `apps/mobile/src/notifications/mobile-scheduler.test.ts` covers granted scheduling windows and native request generation |
-| Mobile notification permission revoked | Verified by automated test | `apps/mobile/src/notifications/mobile-scheduler.test.ts` covers clearing existing schedules after revocation |
+| Mobile notification permission denied | Verified by automated test | `android/src/notifications/mobile-scheduler.test.ts` and `ios/src/notifications/mobile-scheduler.test.ts` cover denied permission producing zero jobs |
+| Mobile notification permission allowed | Verified by automated test | `android/src/notifications/mobile-scheduler.test.ts` and `ios/src/notifications/mobile-scheduler.test.ts` cover granted scheduling windows and native request generation |
+| Mobile notification permission revoked | Verified by automated test | `android/src/notifications/mobile-scheduler.test.ts` and `ios/src/notifications/mobile-scheduler.test.ts` cover clearing existing schedules after revocation |
 | Mobile notification permission re-enabled | Blocked on device | Provider logic resyncs on permission changes, but no usable device/emulator is available on this machine |
-| Web push enable | Verified by automated test | `apps/api/src/index.test.ts` and `apps/api/src/notifications/service.test.ts` cover sync and stored-job behavior |
-| Web push disable | Verified by automated test | `apps/api/src/notifications/service.test.ts` covers pending-job clearing after disable |
-| Web push refresh | Verified by automated test | `apps/api/src/notifications/service.test.ts` covers refresh preserving subscription and re-enqueueing jobs |
-| Location change | Verified by automated test | `apps/mobile/src/notifications/mobile-scheduler.test.ts` covers regenerated schedules for a new city/timezone |
+| Web push enable | Verified by automated test | `api/src/index.test.ts` and `api/src/notifications/service.test.ts` cover sync and stored-job behavior |
+| Web push disable | Verified by automated test | `api/src/notifications/service.test.ts` covers pending-job clearing after disable |
+| Web push refresh | Verified by automated test | `api/src/notifications/service.test.ts` covers refresh preserving subscription and re-enqueueing jobs |
+| Location change | Verified by automated test | `android/src/notifications/mobile-scheduler.test.ts` and `ios/src/notifications/mobile-scheduler.test.ts` cover regenerated schedules for a new city/timezone |
 | Timezone change | Verified by automated test | `packages/core/src/prayer.test.ts` covers saved-timezone mismatch and manual timezone override behavior |
-| Prayer method change | Verified by automated test | `apps/mobile/src/notifications/mobile-scheduler.test.ts` covers schedule regeneration on calculation-method change |
-| Reminder toggle and pre-reminder change | Verified by automated test | `apps/mobile/src/notifications/mobile-scheduler.test.ts` covers per-prayer toggles and pre-reminder expansion |
-| Near-midnight rollover | Verified by automated test | `apps/mobile/src/notifications/mobile-scheduler.test.ts` and `packages/core/src/prayer.test.ts` cover day rollover behavior |
+| Prayer method change | Verified by automated test | `android/src/notifications/mobile-scheduler.test.ts` and `ios/src/notifications/mobile-scheduler.test.ts` cover schedule regeneration on calculation-method change |
+| Reminder toggle and pre-reminder change | Verified by automated test | `android/src/notifications/mobile-scheduler.test.ts` and `ios/src/notifications/mobile-scheduler.test.ts` cover per-prayer toggles and pre-reminder expansion |
+| Near-midnight rollover | Verified by automated test | `android/src/notifications/mobile-scheduler.test.ts`, `ios/src/notifications/mobile-scheduler.test.ts`, and `packages/core/src/prayer.test.ts` cover day rollover behavior |
 | Next-prayer update after day rollover | Verified by automated test | `packages/core/src/prayer.test.ts` covers next-prayer rollover after Isha and before Fajr using saved-location day logic |
-| Saved manual location flow | Verified by code inspection | `apps/mobile/src/prayer/prayer-provider.tsx` validates manual coordinates, optional manual timezone override, and geo-derived timezone fallback; no UI-level automated test exists yet |
-| Device-location fallback behavior | Verified by code inspection | `apps/mobile/src/prayer/prayer-provider.tsx` stores `device-fallback` when geo timezone lookup fails and persists the resulting saved location; no device-level automated test exists yet |
+| Saved manual location flow | Verified by code inspection | `android/src/prayer/prayer-provider.tsx` and `ios/src/prayer/prayer-provider.tsx` validate manual coordinates, optional manual timezone override, and geo-derived timezone fallback; no UI-level automated test exists yet |
+| Device-location fallback behavior | Verified by code inspection | `android/src/prayer/prayer-provider.tsx` and `ios/src/prayer/prayer-provider.tsx` store `device-fallback` when geo timezone lookup fails and persist the resulting saved location; no device-level automated test exists yet |
 | Local manual browser/device smoke | Blocked on environment | Required env values, browser automation, and device/emulator access are unavailable on this machine |
 
 ## Known Non-Blocking Issues

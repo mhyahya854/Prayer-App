@@ -19,8 +19,13 @@ export interface ApiConfig {
   webPushSubject: string;
 }
 
+function parseRawStage(stage?: string) {
+  const value = stage?.trim();
+  return value && value.length > 0 ? value : null;
+}
+
 function normalizeStage(stage?: string): RuntimeResponse['stage'] {
-  if (stage === 'production' || stage === 'staging') {
+  if (stage === 'development' || stage === 'production' || stage === 'staging') {
     return stage;
   }
 
@@ -38,6 +43,8 @@ function parseWorkerInterval(rawInterval?: string) {
 }
 
 export function createApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
+  const rawStage = parseRawStage(env.APP_STAGE);
+
   return {
     allowedOrigins: (env.ALLOWED_ORIGINS ?? '')
       .split(',')
@@ -45,7 +52,7 @@ export function createApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig
       .filter(Boolean),
     host: env.HOST ?? '0.0.0.0',
     port: parsePort(env.PORT),
-    stage: normalizeStage(env.APP_STAGE),
+    stage: normalizeStage(rawStage ?? undefined),
     googleClientId: env.GOOGLE_CLIENT_ID ?? '',
     googleClientSecret: env.GOOGLE_CLIENT_SECRET ?? '',
     googleRedirectUri: env.GOOGLE_REDIRECT_URI ?? '',
@@ -57,8 +64,32 @@ export function createApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig
   };
 }
 
+export function getApiEnvironmentValidationErrors(env: NodeJS.ProcessEnv = process.env) {
+  const errors: string[] = [];
+  const rawStage = parseRawStage(env.APP_STAGE);
+
+  if (!rawStage) {
+    if (env.NODE_ENV === 'production') {
+      errors.push('APP_STAGE is required when NODE_ENV=production and must be set to "staging" or "production".');
+    }
+
+    return errors;
+  }
+
+  if (rawStage !== 'development' && rawStage !== 'staging' && rawStage !== 'production') {
+    errors.push('APP_STAGE must be one of "development", "staging", or "production".');
+    return errors;
+  }
+
+  if (env.NODE_ENV === 'production' && rawStage === 'development') {
+    errors.push('APP_STAGE cannot be "development" when NODE_ENV=production.');
+  }
+
+  return errors;
+}
+
 export function getApiConfigValidationErrors(config: ApiConfig) {
-  if (config.stage !== 'production') {
+  if (config.stage === 'development') {
     return [];
   }
 
@@ -100,7 +131,10 @@ export function getApiConfigValidationErrors(config: ApiConfig) {
 }
 
 export const apiConfig = createApiConfig();
-export const apiConfigValidationErrors = getApiConfigValidationErrors(apiConfig);
+export const apiConfigValidationErrors = [
+  ...getApiEnvironmentValidationErrors(process.env),
+  ...getApiConfigValidationErrors(apiConfig),
+];
 
 export const runtimeStatus: RuntimeResponse = {
   authFlowImplemented: true,

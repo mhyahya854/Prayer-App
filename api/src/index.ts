@@ -16,6 +16,7 @@ import {
   type PrayerTimesResponse,
 } from '@prayer-app/core';
 import Fastify, { type FastifyReply } from 'fastify';
+import { Pool } from 'pg';
 import { z } from 'zod';
 
 import { apiConfig, apiConfigValidationErrors, runtimeStatus } from './config';
@@ -146,6 +147,19 @@ interface ApiRateLimitConfig {
   timeWindow: string;
 }
 
+type ReadinessCheckStatus = 'fail' | 'pass' | 'skipped';
+
+interface ApiReadinessResponse {
+  checks: {
+    config: ReadinessCheckStatus;
+    database: ReadinessCheckStatus;
+    webPush: ReadinessCheckStatus;
+  };
+  errors: string[];
+  service: 'prayer-app-api';
+  status: 'not_ready' | 'ready';
+}
+
 const apiRateLimitConfig: ApiRateLimitConfig = {
   max: 60,
   timeWindow: '1 minute',
@@ -182,13 +196,32 @@ function getErrorProperty(error: unknown, key: string) {
 function createDefaultNotificationService() {
   return createNotificationService({
     notificationWorkerIntervalMs: apiConfig.notificationWorkerIntervalMs,
-    store: createNotificationStore(apiConfig.databaseUrl),
+    store: createNotificationStore(apiConfig.databaseUrl, {
+      stage: apiConfig.stage,
+    }),
     webPush: {
       subject: apiConfig.webPushSubject,
       vapidPrivateKey: apiConfig.webPushPrivateKey,
       vapidPublicKey: apiConfig.webPushPublicKey,
     },
   });
+}
+
+async function checkDatabaseConnectivity(connectionString: string) {
+  const pool = new Pool({
+    connectionString,
+    connectionTimeoutMillis: 3_000,
+    max: 1,
+  });
+
+  try {
+    await pool.query('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  } finally {
+    await pool.end().catch(() => undefined);
+  }
 }
 
 function createDefaultGoogleDriveService() {
@@ -282,6 +315,49 @@ export function buildServer(options?: {
     service: 'prayer-app-api',
     status: 'ok',
   }));
+
+  app.get('/ready', async (_request, reply): Promise<ApiReadinessResponse | void> => {
+    const errors = [...apiConfigValidationErrors];
+    let databaseStatus: ReadinessCheckStatus = 'skipped';
+    let webPushStatus: ReadinessCheckStatus = 'skipped';
+
+    const requiresStrictReadiness = apiConfig.stage !== 'development';
+
+    if (requiresStrictReadiness) {
+      if (!apiConfig.databaseUrl) {
+        databaseStatus = 'fail';
+      } else {
+        const databaseReady = await checkDatabaseConnectivity(apiConfig.databaseUrl);
+        databaseStatus = databaseReady ? 'pass' : 'fail';
+
+        if (!databaseReady) {
+          errors.push('DATABASE_URL is configured but the database is not reachable.');
+        }
+      }
+
+      const hasWebPushConfig = Boolean(
+        apiConfig.webPushPublicKey && apiConfig.webPushPrivateKey && apiConfig.webPushSubject,
+      );
+      webPushStatus = hasWebPushConfig ? 'pass' : 'fail';
+    }
+
+    const response: ApiReadinessResponse = {
+      checks: {
+        config: errors.length === 0 ? 'pass' : 'fail',
+        database: databaseStatus,
+        webPush: webPushStatus,
+      },
+      errors,
+      service: 'prayer-app-api',
+      status: errors.length === 0 && databaseStatus !== 'fail' && webPushStatus !== 'fail' ? 'ready' : 'not_ready',
+    };
+
+    if (response.status !== 'ready') {
+      return reply.code(503).send(response);
+    }
+
+    return response;
+  });
 
   void app.register(
     async (api) => {

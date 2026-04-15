@@ -46,6 +46,7 @@ test('legacy prayer logs preserve stored completions during migration', () => {
     Fajr: true,
     Isha: false,
     Maghrib: true,
+    Sunrise: false,
   });
 });
 

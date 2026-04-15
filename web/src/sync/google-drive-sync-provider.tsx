@@ -321,7 +321,12 @@ export function GoogleDriveSyncProvider({ children }: PropsWithChildren) {
 
   async function disconnect() {
     if (sessionToken) {
-      await disconnectGoogleDriveSession(sessionToken).catch(() => undefined);
+      try {
+        await disconnectGoogleDriveSession(sessionToken);
+      } catch (error) {
+        console.warn('[drive-sync] Failed to revoke Google Drive session during disconnect.', error);
+        setSyncError(getErrorMessage(error));
+      }
     }
 
     await clearPersistedSession();

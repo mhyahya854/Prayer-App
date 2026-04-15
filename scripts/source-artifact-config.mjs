@@ -14,16 +14,19 @@ export const cleanupPaths = [
   'artifacts',
   'coverage',
   'node_modules',
-  'apps/api/node_modules',
-  'apps/android/.expo',
-  'apps/android/dist-web',
-  'apps/android/node_modules',
-  'apps/ios/.expo',
-  'apps/ios/dist-web',
-  'apps/ios/node_modules',
-  'apps/web/.expo',
-  'apps/web/dist-web',
-  'apps/web/node_modules',
+  'api/node_modules',
+  'android/.expo',
+  'android/dist',
+  'android/dist-web',
+  'android/node_modules',
+  'ios/.expo',
+  'ios/dist',
+  'ios/dist-web',
+  'ios/node_modules',
+  'web/.expo',
+  'web/dist',
+  'web/dist-web',
+  'web/node_modules',
   'packages/core/dist',
 ];
 
@@ -60,7 +63,10 @@ export function shouldExcludeRelativePath(relativePath) {
     return true;
   }
 
-  if (segments[0] === 'apps' && segments[2] === 'dist-web') {
+  if (
+    (segments[0] === 'android' || segments[0] === 'ios' || segments[0] === 'web') &&
+    (segments[1] === 'dist' || segments[1] === 'dist-web')
+  ) {
     return true;
   }
 

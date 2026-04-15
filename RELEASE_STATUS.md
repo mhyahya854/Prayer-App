@@ -13,6 +13,8 @@ Date: 2026-03-26
 - `npm run test:android`
 - `npm run test:ios`
 - `npm run test:web`
+- `npm run preflight`
+- `npm run preflight:release`
 - `npm run verify:fresh`
 
 ## Results
@@ -23,6 +25,8 @@ Date: 2026-03-26
 - `npm run test:android`: PASS
 - `npm run test:ios`: PASS
 - `npm run test:web`: PASS
+- `npm run preflight`: PASS
+- `npm run preflight:release`: FAIL (expected on this machine because deployment env values are missing and launch audio is still placeholder/non-approved)
 - `npm run verify:fresh`: PASS
 - `npm run pack:source`: PASS
 
@@ -47,6 +51,8 @@ Date: 2026-03-26
 - Web push sync, refresh, disable, and invalid API payload handling are covered by API tests.
 - Prayer date and timezone handling now has explicit coverage for saved timezone mismatch, midnight boundaries, device-to-manual location switching, manual timezone override, and the next-prayer edge around Fajr/Isha.
 - The clean source artifact installs and passes validation through `npm run verify:fresh`.
+- Baseline release preflight (`npm run preflight`) now validates env-template key coverage and required audio/license status files before packaging/verification.
+- Strict release preflight (`npm run preflight:release`) now blocks launch when required runtime deployment env values are missing or launch audio is still marked as placeholder/non-approved.
 
 ## Remaining Issues
 

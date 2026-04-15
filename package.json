@@ -17,11 +17,13 @@
         "build:core": "npm run build --workspace @prayer-app/core",
         "generate:content-seeds": "node ./scripts/generate-content-seeds.mjs",
         "android": "npm run android --workspace @prayer-app/android",
+        "preflight": "node ./scripts/release-preflight.mjs",
+        "preflight:release": "node ./scripts/release-preflight.mjs --strict-release",
         "test:core": "npm run test --workspace @prayer-app/core",
-        "pack:source": "node ./scripts/pack-source.mjs",
+        "pack:source": "npm run preflight && node ./scripts/pack-source.mjs",
         "test:ios": "npm run test --workspace @prayer-app/ios",
         "clean": "node ./scripts/clean-workspace.mjs",
-        "verify:fresh": "node ./scripts/verify-fresh.mjs",
+        "verify:fresh": "npm run preflight && node ./scripts/verify-fresh.mjs",
         "api": "npm run dev --workspace @prayer-app/api",
         "test:web": "npm run test --workspace @prayer-app/web",
         "typecheck": "npm run build --workspace @prayer-app/core && npm run typecheck --workspace @prayer-app/core && npm run typecheck --workspace @prayer-app/android && npm run typecheck --workspace @prayer-app/ios && npm run typecheck --workspace @prayer-app/web && npm run typecheck --workspace @prayer-app/api",
@@ -31,7 +33,6 @@
     "devDependencies": {
         "archiver": "^7.0.1",
         "extract-zip": "^2.0.1",
-        "lightningcss-linux-arm64-gnu": "^1.32.0",
         "tsx": "^4.21.0"
     },
     "workspaces": [

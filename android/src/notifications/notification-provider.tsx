@@ -38,8 +38,18 @@ import { usePrayerData } from '@/src/prayer/prayer-provider';
 const athanSoundSource = require('../../assets/sounds/athan.wav');
 const reminderSoundSource = require('../../assets/sounds/reminder.wav');
 
-void Promise.resolve(preload(athanSoundSource)).catch(() => undefined);
-void Promise.resolve(preload(reminderSoundSource)).catch(() => undefined);
+function logRecoverableNotificationError(scope: string, error: unknown) {
+  console.warn(`[notifications] ${scope}`, error);
+}
+
+void Promise.resolve(preload(athanSoundSource)).catch((error) => {
+  logRecoverableNotificationError('Unable to preload athan sound.', error);
+  return undefined;
+});
+void Promise.resolve(preload(reminderSoundSource)).catch((error) => {
+  logRecoverableNotificationError('Unable to preload reminder sound.', error);
+  return undefined;
+});
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -147,7 +157,10 @@ export function PrayerNotificationProvider({ children }: PropsWithChildren) {
       interruptionMode: 'mixWithOthers',
       playsInSilentMode: false,
       shouldPlayInBackground: false,
-    }).catch(() => undefined);
+    }).catch((error) => {
+      logRecoverableNotificationError('Unable to set audio mode for notifications.', error);
+      return undefined;
+    });
   }, []);
 
   useEffect(() => {
@@ -270,7 +283,12 @@ export function PrayerNotificationProvider({ children }: PropsWithChildren) {
     if (nextState === 'granted') {
       await configureAndroidChannels();
       if (!savedLocation) {
-        await refreshLocation().catch(() => undefined);
+        try {
+          await refreshLocation();
+        } catch (error) {
+          logRecoverableNotificationError('Unable to refresh location after granting notification permissions.', error);
+          setSyncError('Notification permission was granted, but location refresh failed. Please refresh location manually.');
+        }
       }
     }
   }

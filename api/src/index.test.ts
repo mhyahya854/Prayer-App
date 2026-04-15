@@ -119,6 +119,27 @@ test('api routes are rate limited with the shared error envelope', async (t) => 
   assert.equal(payload.error.message, 'Too many API requests. Please try again shortly.');
 });
 
+test('readiness endpoint returns ready in development with baseline checks', async (t) => {
+  const app = buildServer({
+    notificationService: createNotificationServiceStub(),
+  });
+  t.after(async () => {
+    await app.close();
+  });
+
+  const response = await app.inject({
+    method: 'GET',
+    url: '/ready',
+  });
+  const payload = response.json();
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(payload.status, 'ready');
+  assert.equal(payload.checks.config, 'pass');
+  assert.equal(payload.checks.database, 'skipped');
+  assert.equal(payload.checks.webPush, 'skipped');
+});
+
 test('web notification sync returns scheduled job counts', async (t) => {
   const app = buildServer({
     notificationService: createNotificationServiceStub(),

@@ -11,6 +11,7 @@ import type {
   NotificationScheduleJob,
   PrayerNotificationPreferences,
   PrayerPreferences,
+  RuntimeResponse,
   SavedLocation,
   WebPushSubscriptionInput,
 } from '@prayer-app/core';
@@ -50,6 +51,11 @@ export interface NotificationStore {
   markJobsFailed: (dedupeKeys: string[], message: string) => Promise<void>;
   markJobsSent: (dedupeKeys: string[]) => Promise<void>;
   upsertWebInstallation: (profile: StoredInstallationProfile) => Promise<void>;
+}
+
+export interface NotificationStoreOptions {
+  allowMemoryFallback?: boolean;
+  stage?: RuntimeResponse['stage'];
 }
 
 class MemoryNotificationStore implements NotificationStore {
@@ -420,8 +426,18 @@ class PostgresNotificationStore implements NotificationStore {
   }
 }
 
-export function createNotificationStore(databaseUrl?: string): NotificationStore {
+export function createNotificationStore(
+  databaseUrl?: string,
+  options: NotificationStoreOptions = {},
+): NotificationStore {
+  const stage = options.stage ?? 'development';
+  const allowMemoryFallback = options.allowMemoryFallback ?? stage === 'development';
+
   if (!databaseUrl) {
+    if (!allowMemoryFallback) {
+      throw new Error(`DATABASE_URL is required in ${stage} for durable notification storage.`);
+    }
+
     return new MemoryNotificationStore();
   }
 

@@ -138,3 +138,92 @@ export interface DuaHomeSnapshot {
   categories: DuaCategorySummary[];
   favoriteDuas: DuaItem[];
 }
+
+export interface HadithSourceSummary extends ContentSourceSummary {
+  books: string[];
+  generatedAt: string;
+}
+
+export interface HadithBook {
+  authorArabic: string;
+  authorEnglish: string;
+  hadithCount: number;
+  id: number;
+  isShipNow: boolean;
+  slug: string;
+  titleArabic: string;
+  titleEnglish: string;
+}
+
+export interface HadithChapter {
+  bookId: number;
+  bookSlug: string;
+  id: number;
+  titleArabic: string;
+  titleEnglish: string;
+}
+
+export interface HadithItem {
+  benefits: string[];
+  benefitsArabic: string[];
+  bookHadithNumber: number;
+  bookId: number;
+  bookSlug: string;
+  chapterId: number;
+  chapterTitleArabic: string;
+  chapterTitleEnglish: string;
+  explanation: string;
+  explanationArabic: string;
+  globalHadithId: number;
+  grade: string;
+  gradeArabic: string;
+  hadeethEncId: string | null;
+  id: string;
+  isBookmarked: boolean;
+  isGradeVerified: boolean;
+  narratorEnglish: string;
+  sourceLink: string;
+  takhrij: string;
+  takhrijArabic: string;
+  textArabic: string;
+  textEnglish: string;
+  wordMeaningsArabic: string[];
+}
+
+export interface HadithHomeSnapshot {
+  books: HadithBook[];
+  bookmarkedItems: HadithItem[];
+}
+
+export interface PrayerTopic {
+  description: string;
+  itemCount: number;
+  slug: string;
+  title: string;
+}
+
+export interface PrayerTopicItem {
+  bookSlug: string;
+  chapterId: number;
+  grade: string;
+  hadithId: string;
+  isGradeVerified: boolean;
+  topicSlug: string;
+}
+
+export interface HadithSeedBundle {
+  books: HadithBook[];
+  chapters: HadithChapter[];
+  entries: Omit<HadithItem, 'isBookmarked'>[];
+  source: HadithSourceSummary;
+}
+
+export interface PrayerTopicsSourceSummary extends ContentSourceSummary {
+  generatedAt: string;
+}
+
+export interface PrayerTopicsSeedBundle {
+  items: PrayerTopicItem[];
+  source: PrayerTopicsSourceSummary;
+  topics: PrayerTopic[];
+}

@@ -30,8 +30,8 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: palette.surface,
           borderTopColor: palette.border,
-          height: 82,
-          paddingBottom: 20,
+          height: 70,
+          paddingBottom: 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
@@ -45,14 +45,18 @@ export default function TabLayout() {
         options={{
           title: 'Today',
           tabBarIcon: ({ color }) => (
-            <SymbolView name="sun.max.fill" tintColor={color} size={24} />
+            <SymbolView
+              name={{ android: 'wb_sunny' }}
+              tintColor={color}
+              size={24}
+            />
           ),
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable style={{ marginRight: 15 }}>
                 {({ pressed }) => (
                   <SymbolView
-                    name="slider.horizontal.3"
+                    name={{ android: 'tune' }}
                     size={22}
                     tintColor={palette.text}
                     style={{ opacity: pressed ? 0.5 : 1 }}
@@ -64,31 +68,68 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="hadith"
+        options={{
+          title: 'Hadith',
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{ android: 'library_books' }}
+              tintColor={color}
+              size={24}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="quran"
         options={{
           title: 'Quran',
-          tabBarIcon: ({ color }) => <SymbolView name="book.fill" tintColor={color} size={24} />,
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{ android: 'menu_book' }}
+              tintColor={color}
+              size={24}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="duas"
         options={{
           title: 'Duas',
-          tabBarIcon: ({ color }) => <SymbolView name="sparkles" tintColor={color} size={24} />,
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{ android: 'auto_awesome' }}
+              tintColor={color}
+              size={24}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
           title: 'Progress',
-          tabBarIcon: ({ color }) => <SymbolView name="chart.bar.fill" tintColor={color} size={24} />,
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{ android: 'bar_chart' }}
+              tintColor={color}
+              size={24}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <SymbolView name="gearshape.fill" tintColor={color} size={24} />,
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{ android: 'settings' }}
+              tintColor={color}
+              size={24}
+            />
+          ),
         }}
       />
     </Tabs>

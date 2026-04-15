@@ -68,6 +68,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="hadith"
+        options={{
+          title: 'Hadith',
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{ android: 'library_books' }}
+              tintColor={color}
+              size={24}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="quran"
         options={{
           title: 'Quran',

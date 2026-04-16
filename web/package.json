@@ -3,7 +3,7 @@
     "main":  "expo-router/entry",
     "version":  "1.0.0",
     "scripts":  {
-                    "test":  "tsx --test src/lib/storage/prayer-storage-schema.test.ts src/lib/storage/notification-storage-schema.test.ts src/notifications/mobile-scheduler.test.ts",
+                    "test":  "tsx --test src/lib/storage/prayer-storage-schema.test.ts src/lib/storage/notification-storage-schema.test.ts src/notifications/mobile-scheduler.test.ts src/content/database.web.test.ts",
                     "typecheck":  "tsc --noEmit",
                     "web":  "expo start --web",
                     "start":  "expo start"

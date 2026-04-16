@@ -7,6 +7,7 @@ import { useAppPalette } from '@/src/theme/palette';
 
 export default function TabLayout() {
   const palette = useAppPalette();
+  const tabIconSize = Platform.OS === 'web' ? 20 : 24;
 
   return (
     <Tabs
@@ -32,12 +33,15 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: palette.surface,
           borderTopColor: palette.border,
-          height: Platform.select({ ios: 82, default: 70 }),
+          height: Platform.select({ ios: 82, web: 72, default: 70 }),
           paddingBottom: Platform.select({ ios: 20, default: 8 }),
           paddingTop: 8,
         },
+        tabBarItemStyle: {
+          paddingHorizontal: Platform.OS === 'web' ? 2 : 0,
+        },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: Platform.OS === 'web' ? 10 : 11,
           fontWeight: '500',
         },
       }}
@@ -54,7 +58,24 @@ export default function TabLayout() {
                 web: 'nights_stay',
               }}
               tintColor={color}
-              size={24}
+              size={tabIconSize}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="hadith"
+        options={{
+          title: 'Hadith',
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{
+                ios: 'books.vertical.fill',
+                android: 'library_books',
+                web: 'library_books',
+              }}
+              tintColor={color}
+              size={tabIconSize}
             />
           ),
         }}
@@ -71,7 +92,7 @@ export default function TabLayout() {
                 web: 'menu_book',
               }}
               tintColor={color}
-              size={24}
+              size={tabIconSize}
             />
           ),
         }}
@@ -88,7 +109,7 @@ export default function TabLayout() {
                 web: 'auto_awesome',
               }}
               tintColor={color}
-              size={24}
+              size={tabIconSize}
             />
           ),
         }}
@@ -96,7 +117,6 @@ export default function TabLayout() {
       <Tabs.Screen
         name="progress"
         options={{
-          href: null,
           title: 'Progress',
           tabBarIcon: ({ color }) => (
             <SymbolView
@@ -106,7 +126,7 @@ export default function TabLayout() {
                 web: 'bar_chart',
               }}
               tintColor={color}
-              size={24}
+              size={tabIconSize}
             />
           ),
         }}
@@ -123,7 +143,7 @@ export default function TabLayout() {
                 web: 'location_on',
               }}
               tintColor={color}
-              size={24}
+              size={tabIconSize}
             />
           ),
         }}
@@ -140,7 +160,7 @@ export default function TabLayout() {
                 web: 'explore',
               }}
               tintColor={color}
-              size={24}
+              size={tabIconSize}
             />
           ),
         }}
@@ -157,7 +177,7 @@ export default function TabLayout() {
                 web: 'settings',
               }}
               tintColor={color}
-              size={24}
+              size={tabIconSize}
             />
           ),
         }}
@@ -165,6 +185,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
-
-

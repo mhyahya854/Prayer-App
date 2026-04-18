@@ -29,6 +29,8 @@ export function ThemeAccentSelector({ onChange, value }: ThemeAccentSelectorProp
           <Pressable
             key={option.key}
             accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
+            accessibilityLabel={`${option.label} accent color`}
             onPress={() => onChange(option.key)}
             style={[
               styles.swatch,

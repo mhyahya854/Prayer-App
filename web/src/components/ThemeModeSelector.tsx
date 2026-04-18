@@ -46,6 +46,7 @@ export function ThemeModeSelector({ onChange, value }: ThemeModeSelectorProps) {
           <Pressable
             key={option.id}
             accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
             onPress={() => onChange(option.id)}
             style={[
               styles.option,

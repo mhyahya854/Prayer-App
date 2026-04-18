@@ -28,20 +28,21 @@ import { ApiMosqueSearchService, MosqueSearchUnavailableError, type MosqueSearch
 import { createNotificationService, type NotificationService } from './notifications/service';
 import { createNotificationStore } from './notifications/store';
 
+import {
+  calculationMethodSchema,
+  notificationPreferencesSchema,
+  prayerPreferencesSchema,
+  savedLocationSchema,
+} from './validation';
+import {
+  notificationDisableBodySchema,
+  notificationRefreshBodySchema,
+  notificationSyncBodySchema,
+} from './notifications/validation';
+
 const prayerQuerySchema = z.object({
   asrAdjustment: z.coerce.number().int().min(-30).max(30).optional(),
-  calculationMethod: z
-    .enum([
-      'muslim-world-league',
-      'egyptian',
-      'karachi',
-      'umm-al-qura',
-      'north-america',
-      'singapore',
-      'qatar',
-      'turkey',
-    ])
-    .optional(),
+  calculationMethod: calculationMethodSchema.optional(),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -58,34 +59,7 @@ const prayerQuerySchema = z.object({
   timeZone: z.string().trim().min(1).max(120).optional(),
 });
 
-const calculationMethodSchema = z.enum([
-  'muslim-world-league',
-  'egyptian',
-  'karachi',
-  'umm-al-qura',
-  'north-america',
-  'singapore',
-  'qatar',
-  'turkey',
-]);
-
 const supportedMosqueRadiusOptions = [3, 7, 12, 20] as const;
-
-const prayerPreferencesSchema = z.object({
-  adjustments: z.object({
-    fajr: z.number().int().min(-30).max(30),
-    sunrise: z.number().int().min(-30).max(30),
-    dhuhr: z.number().int().min(-30).max(30),
-    asr: z.number().int().min(-30).max(30),
-    maghrib: z.number().int().min(-30).max(30),
-    isha: z.number().int().min(-30).max(30),
-  }),
-  autoRefreshLocation: z.boolean(),
-  calculationMethod: calculationMethodSchema,
-  calculationMode: z.enum(['manual', 'auto']),
-  madhab: z.enum(['shafi', 'hanafi']),
-  timeFormat: z.enum(['12h', '24h']),
-});
 
 const mosqueNearbyQuerySchema = z.object({
   latitude: z.coerce.number().min(-90).max(90),
@@ -97,61 +71,6 @@ const mosqueNearbyQuerySchema = z.object({
       (value) => supportedMosqueRadiusOptions.includes(value as (typeof supportedMosqueRadiusOptions)[number]),
       'Radius must be one of 3, 7, 12, or 20 km.',
     ),
-});
-
-const notificationPreferencesSchema = z.object({
-  enabledPrayers: z.object({
-    Fajr: z.boolean(),
-    Sunrise: z.boolean(),
-    Dhuhr: z.boolean(),
-    Asr: z.boolean(),
-    Maghrib: z.boolean(),
-    Isha: z.boolean(),
-  }),
-  preReminderMinutes: z.union([z.literal(10), z.literal(15), z.literal(20), z.literal(30), z.null()]),
-});
-
-const savedLocationSchema = z.object({
-  coordinates: z.object({
-    latitude: z.number().min(-90).max(90),
-    longitude: z.number().min(-180).max(180),
-  }),
-  label: z.string().trim().min(1).max(120),
-  source: z.enum(['device', 'manual']),
-  timeZone: z.string().trim().min(1).max(120).nullable(),
-  timeZoneSource: z.enum(['geo', 'manual', 'device-fallback']),
-  updatedAt: z.string().trim().min(1),
-});
-
-const pushSubscriptionSchema = z.object({
-  endpoint: z.string().trim().min(1),
-  expirationTime: z.number().nullable(),
-  keys: z.object({
-    auth: z.string().trim().min(1),
-    p256dh: z.string().trim().min(1),
-  }),
-});
-
-const notificationSyncBodySchema = z.object({
-  installationId: z.string().trim().min(1).max(120),
-  notificationPreferences: notificationPreferencesSchema,
-  platform: z.literal('web'),
-  prayerPreferences: prayerPreferencesSchema,
-  pushSubscription: pushSubscriptionSchema,
-  savedLocation: savedLocationSchema,
-});
-
-const notificationRefreshBodySchema = z.object({
-  installationId: z.string().trim().min(1).max(120),
-  notificationPreferences: notificationPreferencesSchema,
-  platform: z.literal('web'),
-  prayerPreferences: prayerPreferencesSchema,
-  savedLocation: savedLocationSchema,
-});
-
-const notificationDisableBodySchema = z.object({
-  installationId: z.string().trim().min(1).max(120),
-  platform: z.literal('web'),
 });
 
 const googleDriveCallbackQuerySchema = z.object({
@@ -314,7 +233,7 @@ export function buildServer(options?: {
           : false
         : true,
   });
-  app.setErrorHandler((error, _request, reply) => {
+  app.setErrorHandler((error, request, reply) => {
     const rawStatusCode = getErrorProperty(error, 'statusCode');
     const rawCode = getErrorProperty(error, 'code');
     const rawMessage = getErrorProperty(error, 'message');
@@ -322,11 +241,16 @@ export function buildServer(options?: {
     const rawTtl = getErrorProperty(error, 'ttl');
     const statusCode = typeof rawStatusCode === 'number' && rawStatusCode >= 400 ? rawStatusCode : 500;
     const isRateLimited = statusCode === 429;
+    const isClientError = statusCode >= 400 && statusCode < 500;
+
     const errorCode = isRateLimited
       ? 'rate_limited'
       : typeof rawCode === 'string'
         ? rawCode
-        : 'internal_error';
+        : isClientError
+          ? 'bad_request'
+          : 'internal_error';
+
     const message = isRateLimited
       ? 'Too many API requests. Please try again shortly.'
       : statusCode >= 500
@@ -334,12 +258,35 @@ export function buildServer(options?: {
         : typeof rawMessage === 'string'
           ? rawMessage
           : 'Request failed.';
+
     const details = isRateLimited
       ? {
           ...(typeof rawMax === 'number' ? { max: rawMax } : {}),
           ...(typeof rawTtl === 'number' ? { retryAfterMs: rawTtl } : {}),
         }
       : undefined;
+
+    // Enhanced logging for server-side troubleshooting
+    if (statusCode >= 500) {
+      request.log.error(
+        {
+          err: error,
+          method: request.method,
+          url: request.url,
+        },
+        `Unhandled server error: ${message}`,
+      );
+    } else {
+      request.log.info(
+        {
+          code: errorCode,
+          method: request.method,
+          statusCode,
+          url: request.url,
+        },
+        `API ${statusCode} response: ${message}`,
+      );
+    }
 
     reply.code(statusCode).send(createApiErrorResponse(errorCode, message, details));
   });

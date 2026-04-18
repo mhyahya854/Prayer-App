@@ -163,6 +163,8 @@ export function ManualLocationForm({
 
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ busy: isSubmitting, disabled: isSubmitting }}
+        accessibilityLabel={isSubmitting ? 'Saving location...' : submitLabel}
         onPress={() => void handleSubmit()}
         style={[styles.submitButton, { backgroundColor: palette.accent }]}
       >

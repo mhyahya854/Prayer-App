@@ -1,11 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
-  duaSeedBundle,
-  hadithSeedBundle,
-  prayerTopicsSeedBundle,
-  quranSeedBundle,
+  getContentSeedVersion,
+  getDuaSeedBundle,
+  getHadithSeedBundle,
+  getPrayerTopicsSeedBundle,
+  getQuranSeedBundle,
 } from '@/src/content/seed/data';
+
+let quranChapterMap: Map<number, any> | null = null;
+let duaCategoryMap: Map<string, any> | null = null;
+let duaItemMap: Map<string, any> | null = null;
+let hadithBookMap: Map<string, any> | null = null;
+let hadithEntryMap: Map<string, any> | null = null;
+let duaItemsByCategory: Map<string, any[]> | null = null;
+let hadithChaptersByBook: Map<string, any[]> | null = null;
+let hadithEntriesByBookAndChapter: Map<string, any[]> | null = null;
+let prayerTopicItemsByTopic: Map<string, any[]> | null = null;
+
 import type {
   DuaCategoryDetail,
   DuaCategorySummary,
@@ -32,40 +44,49 @@ const duaFavoritesStorageKey = 'prayer-app.web.dua-favorites';
 const duaCountersStorageKey = 'prayer-app.web.dua-counters';
 const hadithBookmarksStorageKey = 'prayer-app.web.hadith-bookmarks';
 
-const quranChapterMap = new Map(quranSeedBundle.chapters.map((chapter) => [chapter.id, chapter]));
-const duaCategoryMap = new Map(duaSeedBundle.categories.map((category) => [category.slug, category]));
-const duaItemMap = new Map(duaSeedBundle.items.map((item) => [item.id, item]));
-const hadithBookMap = new Map(hadithSeedBundle.books.map((book) => [book.slug, book]));
-const hadithEntryMap = new Map(hadithSeedBundle.entries.map((entry) => [entry.id, entry]));
-const duaItemsByCategory = new Map<string, typeof duaSeedBundle.items>();
-const hadithChaptersByBook = new Map<string, HadithChapter[]>();
-const hadithEntriesByBookAndChapter = new Map<string, Array<(typeof hadithSeedBundle.entries)[number]>>();
-const prayerTopicItemsByTopic = new Map<string, PrayerTopicItem[]>();
+function ensureDataMaps() {
+  if (quranChapterMap) return;
 
-for (const category of duaSeedBundle.categories) {
-  duaItemsByCategory.set(
-    category.slug,
-    duaSeedBundle.items.filter((item) => item.categorySlug === category.slug),
-  );
-}
+  const quranSeedBundle = getQuranSeedBundle();
+  const duaSeedBundle = getDuaSeedBundle();
+  const hadithSeedBundle = getHadithSeedBundle();
+  const prayerTopicsSeedBundle = getPrayerTopicsSeedBundle();
 
-for (const chapter of hadithSeedBundle.chapters) {
-  const chapters = hadithChaptersByBook.get(chapter.bookSlug) ?? [];
-  chapters.push(chapter);
-  hadithChaptersByBook.set(chapter.bookSlug, chapters);
-}
+  quranChapterMap = new Map(quranSeedBundle.chapters.map((chapter) => [chapter.id, chapter]));
+  duaCategoryMap = new Map(duaSeedBundle.categories.map((category) => [category.slug, category]));
+  duaItemMap = new Map(duaSeedBundle.items.map((item) => [item.id, item]));
+  hadithBookMap = new Map(hadithSeedBundle.books.map((book) => [book.slug, book]));
+  hadithEntryMap = new Map(hadithSeedBundle.entries.map((entry) => [entry.id, entry]));
+  
+  duaItemsByCategory = new Map();
+  for (const category of duaSeedBundle.categories) {
+    duaItemsByCategory.set(
+      category.slug,
+      duaSeedBundle.items.filter((item) => item.categorySlug === category.slug),
+    );
+  }
 
-for (const entry of hadithSeedBundle.entries) {
-  const key = getHadithChapterKey(entry.bookSlug, entry.chapterId);
-  const chapterEntries = hadithEntriesByBookAndChapter.get(key) ?? [];
-  chapterEntries.push(entry);
-  hadithEntriesByBookAndChapter.set(key, chapterEntries);
-}
+  hadithChaptersByBook = new Map();
+  for (const chapter of hadithSeedBundle.chapters) {
+    const chapters = hadithChaptersByBook.get(chapter.bookSlug) ?? [];
+    chapters.push(chapter);
+    hadithChaptersByBook.set(chapter.bookSlug, chapters);
+  }
 
-for (const item of prayerTopicsSeedBundle.items) {
-  const topicItems = prayerTopicItemsByTopic.get(item.topicSlug) ?? [];
-  topicItems.push(item);
-  prayerTopicItemsByTopic.set(item.topicSlug, topicItems);
+  hadithEntriesByBookAndChapter = new Map();
+  for (const entry of hadithSeedBundle.entries) {
+    const key = getHadithChapterKey(entry.bookSlug, entry.chapterId);
+    const chapterEntries = hadithEntriesByBookAndChapter.get(key) ?? [];
+    chapterEntries.push(entry);
+    hadithEntriesByBookAndChapter.set(key, chapterEntries);
+  }
+
+  prayerTopicItemsByTopic = new Map();
+  for (const item of prayerTopicsSeedBundle.items) {
+    const topicItems = prayerTopicItemsByTopic.get(item.topicSlug) ?? [];
+    topicItems.push(item);
+    prayerTopicItemsByTopic.set(item.topicSlug, topicItems);
+  }
 }
 
 interface LastReadRecord {
@@ -258,12 +279,14 @@ export function resetContentStateForTests() {
 }
 
 export async function ensureContentDatabase() {
+  ensureDataMaps();
   await hydrateState();
   return null;
 }
 
 export async function getQuranHomeSnapshot(): Promise<QuranHomeSnapshot> {
   await ensureContentDatabase();
+  const quranSeedBundle = getQuranSeedBundle();
 
   const bookmarks = Object.entries(quranBookmarks)
     .sort((left, right) => right[1].localeCompare(left[1]))
@@ -289,6 +312,7 @@ export async function getQuranHomeSnapshot(): Promise<QuranHomeSnapshot> {
 
 export async function searchQuran(query: string): Promise<QuranSearchResult[]> {
   await ensureContentDatabase();
+  const quranSeedBundle = getQuranSeedBundle();
 
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -398,6 +422,7 @@ export async function toggleQuranBookmark(chapterId: number, verseId: number) {
 
 export async function getDuaHomeSnapshot(): Promise<DuaHomeSnapshot> {
   await ensureContentDatabase();
+  const duaSeedBundle = getDuaSeedBundle();
 
   return {
     categories: duaSeedBundle.categories.map(
@@ -460,6 +485,7 @@ export async function resetDuaCounter(duaId: string) {
 
 export async function getHadithHomeSnapshot(): Promise<HadithHomeSnapshot> {
   await ensureContentDatabase();
+  const hadithSeedBundle = getHadithSeedBundle();
 
   const bookmarkedItems = Object.entries(hadithBookmarks)
     .sort((left, right) => right[1].localeCompare(left[1]))
@@ -509,6 +535,7 @@ export async function getHadithChapterDetail(bookSlug: string, chapterId: number
 
 export async function searchHadith(query: string): Promise<HadithItem[]> {
   await ensureContentDatabase();
+  const hadithSeedBundle = getHadithSeedBundle();
 
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -554,6 +581,7 @@ export async function toggleHadithBookmark(id: string) {
 
 export async function getPrayerTopics(): Promise<{ topics: PrayerTopic[]; items: PrayerTopicItem[] }> {
   await ensureContentDatabase();
+  const prayerTopicsSeedBundle = getPrayerTopicsSeedBundle();
 
   return {
     topics: [...prayerTopicsSeedBundle.topics]

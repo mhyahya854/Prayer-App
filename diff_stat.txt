@@ -1,0 +1,335 @@
+﻿ .env.example                                       |      6 +-
+ android/.gitignore                                 |     44 -
+ android/.vscode/extensions.json                    |      1 -
+ android/.vscode/settings.json                      |      7 -
+ android/app.json                                   |     52 -
+ android/app/(tabs)/_layout.tsx                     |    140 -
+ android/app/(tabs)/duas.tsx                        |    229 -
+ android/app/(tabs)/hadith.tsx                      |    107 -
+ android/app/(tabs)/index.tsx                       |    310 -
+ android/app/(tabs)/progress.tsx                    |    166 -
+ android/app/(tabs)/quran.tsx                       |    409 -
+ android/app/(tabs)/settings.tsx                    |    539 -
+ android/app/+not-found.tsx                         |     41 -
+ android/app/_layout.tsx                            |     77 -
+ android/app/auth-complete.tsx                      |     57 -
+ android/app/diagnostics.tsx                        |    134 -
+ android/app/drive-sync.tsx                         |    177 -
+ android/app/duas/[categorySlug].tsx                |    294 -
+ android/app/hadith/[bookSlug].tsx                  |     63 -
+ android/app/hadith/[bookSlug]/[chapterId].tsx      |     73 -
+ android/app/modal.tsx                              |     85 -
+ android/app/prayer-study/[topicSlug].tsx           |     55 -
+ android/app/prayer-study/index.tsx                 |     46 -
+ android/app/quran/[chapterId].tsx                  |    298 -
+ android/assets/fonts/SpaceMono-Regular.ttf         |    Bin 93252 -> 0 bytes
+ android/assets/images/android-icon-background.png  |    Bin 17549 -> 0 bytes
+ android/assets/images/android-icon-foreground.png  |    Bin 78796 -> 0 bytes
+ android/assets/images/android-icon-monochrome.png  |    Bin 4140 -> 0 bytes
+ android/assets/images/favicon.png                  |    Bin 1129 -> 0 bytes
+ android/assets/images/icon.png                     |    Bin 393493 -> 0 bytes
+ android/assets/images/splash-icon.png              |    Bin 17547 -> 0 bytes
+ android/assets/sounds/ASSET_LICENSES.md            |     19 -
+ android/assets/sounds/athan.wav                    |    Bin 682712 -> 0 bytes
+ android/assets/sounds/reminder.wav                 |    Bin 52964 -> 0 bytes
+ android/eas.json                                   |     21 -
+ android/package.json                               |     55 -
+ android/src/components/CollapsibleSection.tsx      |     73 -
+ android/src/components/SectionCard.tsx             |     47 -
+ android/src/components/StatPill.tsx                |     38 -
+ android/src/components/ThemeModeSelector.tsx       |     71 -
+ android/src/config/app-config.ts                   |      8 -
+ android/src/content/content-provider.tsx           |    154 -
+ android/src/content/database.ts                    |   1208 -
+ android/src/content/seed/data.ts                   |     17 -
+ .../content/seed/duas.hisnul-muslim.bundle.json    |      1 -
+ android/src/content/seed/hadith.bundle.json        | 928671 ------------------
+ android/src/content/seed/prayer-topics.bundle.json | 130247 ---
+ android/src/content/seed/quran.en.bundle.json      |      1 -
+ android/src/content/types.ts                       |    229 -
+ android/src/hooks/useProductionStatus.ts           |     65 -
+ android/src/lib/api/client.ts                      |     93 -
+ android/src/lib/storage/drive-sync-storage.ts      |     48 -
+ .../storage/notification-storage-schema.test.ts    |     51 -
+ .../src/lib/storage/notification-storage-schema.ts |    123 -
+ android/src/lib/storage/notification-storage.ts    |     93 -
+ .../src/lib/storage/prayer-storage-schema.test.ts  |     87 -
+ android/src/lib/storage/prayer-storage-schema.ts   |    196 -
+ android/src/lib/storage/prayer-storage.ts          |    128 -
+ android/src/lib/storage/theme-storage.ts           |    124 -
+ android/src/notifications/mobile-scheduler.test.ts |    296 -
+ android/src/notifications/mobile-scheduler.ts      |    159 -
+ .../src/notifications/notification-provider.tsx    |    388 -
+ android/src/prayer/ManualLocationForm.tsx          |    220 -
+ android/src/prayer/location-time-zone.ts           |     33 -
+ android/src/prayer/prayer-provider.tsx             |    360 -
+ android/src/sync/google-drive-sync-provider.tsx    |    405 -
+ android/src/theme/palette.ts                       |     65 -
+ android/src/theme/theme-provider.tsx               |    114 -
+ android/src/types/tz-lookup.d.ts                   |      3 -
+ android/tsconfig.json                              |     17 -
+ api/package.json                                   |      2 +-
+ api/src/config.ts                                  |     24 +-
+ api/src/google-drive/schema.ts                     |      3 +
+ api/src/index.test.ts                              |     59 +
+ api/src/index.ts                                   |     84 +-
+ ios/.gitignore                                     |     44 -
+ ios/.vscode/extensions.json                        |      1 -
+ ios/.vscode/settings.json                          |      7 -
+ ios/app.json                                       |     45 -
+ ios/app/(tabs)/_layout.tsx                         |    140 -
+ ios/app/(tabs)/duas.tsx                            |    229 -
+ ios/app/(tabs)/hadith.tsx                          |    107 -
+ ios/app/(tabs)/index.tsx                           |    310 -
+ ios/app/(tabs)/progress.tsx                        |    166 -
+ ios/app/(tabs)/quran.tsx                           |    409 -
+ ios/app/(tabs)/settings.tsx                        |    539 -
+ ios/app/+not-found.tsx                             |     41 -
+ ios/app/_layout.tsx                                |     77 -
+ ios/app/auth-complete.tsx                          |     57 -
+ ios/app/diagnostics.tsx                            |    134 -
+ ios/app/drive-sync.tsx                             |    177 -
+ ios/app/duas/[categorySlug].tsx                    |    294 -
+ ios/app/modal.tsx                                  |     85 -
+ ios/app/prayer-study/index.tsx                     |     46 -
+ ios/app/quran/[chapterId].tsx                      |    298 -
+ ios/assets/fonts/SpaceMono-Regular.ttf             |    Bin 93252 -> 0 bytes
+ ios/assets/images/android-icon-background.png      |    Bin 17549 -> 0 bytes
+ ios/assets/images/android-icon-foreground.png      |    Bin 78796 -> 0 bytes
+ ios/assets/images/android-icon-monochrome.png      |    Bin 4140 -> 0 bytes
+ ios/assets/images/favicon.png                      |    Bin 1129 -> 0 bytes
+ ios/assets/images/icon.png                         |    Bin 393493 -> 0 bytes
+ ios/assets/images/splash-icon.png                  |    Bin 17547 -> 0 bytes
+ ios/assets/sounds/ASSET_LICENSES.md                |     19 -
+ ios/assets/sounds/athan.wav                        |    Bin 682712 -> 0 bytes
+ ios/assets/sounds/reminder.wav                     |    Bin 52964 -> 0 bytes
+ ios/eas.json                                       |     21 -
+ ios/package.json                                   |     55 -
+ ios/src/components/CollapsibleSection.tsx          |     73 -
+ ios/src/components/SectionCard.tsx                 |     47 -
+ ios/src/components/StatPill.tsx                    |     38 -
+ ios/src/components/ThemeModeSelector.tsx           |     71 -
+ ios/src/config/app-config.ts                       |      8 -
+ ios/src/content/content-provider.tsx               |    154 -
+ ios/src/content/database.ts                        |   1208 -
+ ios/src/content/seed/data.ts                       |     17 -
+ .../content/seed/duas.hisnul-muslim.bundle.json    |      1 -
+ ios/src/content/seed/hadith.bundle.json            | 928671 ------------------
+ ios/src/content/seed/prayer-topics.bundle.json     | 130247 ---
+ ios/src/content/seed/quran.en.bundle.json          |      1 -
+ ios/src/content/types.ts                           |    229 -
+ ios/src/hooks/useProductionStatus.ts               |     65 -
+ ios/src/lib/api/client.ts                          |     93 -
+ ios/src/lib/storage/drive-sync-storage.ts          |     48 -
+ .../storage/notification-storage-schema.test.ts    |     51 -
+ ios/src/lib/storage/notification-storage-schema.ts |    123 -
+ ios/src/lib/storage/notification-storage.ts        |     93 -
+ ios/src/lib/storage/prayer-storage-schema.test.ts  |     87 -
+ ios/src/lib/storage/prayer-storage-schema.ts       |    196 -
+ ios/src/lib/storage/prayer-storage.ts              |    128 -
+ ios/src/lib/storage/theme-storage.ts               |    124 -
+ ios/src/notifications/mobile-scheduler.test.ts     |    296 -
+ ios/src/notifications/mobile-scheduler.ts          |    159 -
+ ios/src/notifications/notification-provider.tsx    |    365 -
+ ios/src/prayer/ManualLocationForm.tsx              |    220 -
+ ios/src/prayer/location-time-zone.ts               |     33 -
+ ios/src/prayer/prayer-provider.tsx                 |    360 -
+ ios/src/sync/google-drive-sync-provider.tsx        |    405 -
+ ios/src/theme/palette.ts                           |     65 -
+ ios/src/theme/theme-provider.tsx                   |    114 -
+ ios/src/types/tz-lookup.d.ts                       |      3 -
+ ios/tsconfig.json                                  |     17 -
+ node_modules/.package-lock.json                    |   1341 +-
+ node_modules/@prayer-app/android/.gitignore        |     44 -
+ .../@prayer-app/android/.vscode/extensions.json    |      1 -
+ .../@prayer-app/android/.vscode/settings.json      |      7 -
+ node_modules/@prayer-app/android/app.json          |     52 -
+ .../@prayer-app/android/app/(tabs)/_layout.tsx     |    127 -
+ .../@prayer-app/android/app/(tabs)/duas.tsx        |    229 -
+ .../@prayer-app/android/app/(tabs)/index.tsx       |    310 -
+ .../@prayer-app/android/app/(tabs)/progress.tsx    |    166 -
+ .../@prayer-app/android/app/(tabs)/quran.tsx       |    409 -
+ .../@prayer-app/android/app/(tabs)/settings.tsx    |    539 -
+ .../@prayer-app/android/app/+not-found.tsx         |     41 -
+ node_modules/@prayer-app/android/app/_layout.tsx   |     77 -
+ .../@prayer-app/android/app/auth-complete.tsx      |     57 -
+ .../@prayer-app/android/app/diagnostics.tsx        |    134 -
+ .../@prayer-app/android/app/drive-sync.tsx         |    177 -
+ .../android/app/duas/[categorySlug].tsx            |    294 -
+ node_modules/@prayer-app/android/app/modal.tsx     |     85 -
+ .../@prayer-app/android/app/quran/[chapterId].tsx  |    298 -
+ .../android/assets/fonts/SpaceMono-Regular.ttf     |    Bin 93252 -> 0 bytes
+ .../assets/images/android-icon-background.png      |    Bin 17549 -> 0 bytes
+ .../assets/images/android-icon-foreground.png      |    Bin 78796 -> 0 bytes
+ .../assets/images/android-icon-monochrome.png      |    Bin 4140 -> 0 bytes
+ .../@prayer-app/android/assets/images/favicon.png  |    Bin 1129 -> 0 bytes
+ .../@prayer-app/android/assets/images/icon.png     |    Bin 393493 -> 0 bytes
+ .../android/assets/images/splash-icon.png          |    Bin 17547 -> 0 bytes
+ .../android/assets/sounds/ASSET_LICENSES.md        |     19 -
+ .../@prayer-app/android/assets/sounds/athan.wav    |    Bin 682712 -> 0 bytes
+ .../@prayer-app/android/assets/sounds/reminder.wav |    Bin 52964 -> 0 bytes
+ node_modules/@prayer-app/android/eas.json          |     21 -
+ node_modules/@prayer-app/android/package.json      |     55 -
+ .../android/src/components/CollapsibleSection.tsx  |     73 -
+ .../android/src/components/SectionCard.tsx         |     47 -
+ .../android/src/components/StatPill.tsx            |     38 -
+ .../android/src/components/ThemeModeSelector.tsx   |     71 -
+ .../@prayer-app/android/src/config/app-config.ts   |      8 -
+ .../android/src/content/content-provider.tsx       |    116 -
+ .../@prayer-app/android/src/content/database.ts    |    716 -
+ .../@prayer-app/android/src/content/seed/data.ts   |      6 -
+ .../content/seed/duas.hisnul-muslim.bundle.json    |      1 -
+ .../android/src/content/seed/quran.en.bundle.json  |      1 -
+ .../@prayer-app/android/src/content/types.ts       |    140 -
+ .../android/src/hooks/useProductionStatus.ts       |     65 -
+ .../@prayer-app/android/src/lib/api/client.ts      |     93 -
+ .../android/src/lib/storage/drive-sync-storage.ts  |     48 -
+ .../storage/notification-storage-schema.test.ts    |     51 -
+ .../src/lib/storage/notification-storage-schema.ts |    123 -
+ .../src/lib/storage/notification-storage.ts        |     93 -
+ .../src/lib/storage/prayer-storage-schema.test.ts  |     86 -
+ .../src/lib/storage/prayer-storage-schema.ts       |    196 -
+ .../android/src/lib/storage/prayer-storage.ts      |    128 -
+ .../android/src/lib/storage/theme-storage.ts       |    124 -
+ .../src/notifications/mobile-scheduler.test.ts     |    296 -
+ .../android/src/notifications/mobile-scheduler.ts  |    159 -
+ .../src/notifications/notification-provider.tsx    |    370 -
+ .../android/src/prayer/ManualLocationForm.tsx      |    220 -
+ .../android/src/prayer/location-time-zone.ts       |     33 -
+ .../android/src/prayer/prayer-provider.tsx         |    360 -
+ .../src/sync/google-drive-sync-provider.tsx        |    400 -
+ .../@prayer-app/android/src/theme/palette.ts       |     65 -
+ .../android/src/theme/theme-provider.tsx           |    114 -
+ .../@prayer-app/android/src/types/tz-lookup.d.ts   |      3 -
+ node_modules/@prayer-app/android/tsconfig.json     |     17 -
+ node_modules/@prayer-app/api/package.json          |      2 +-
+ node_modules/@prayer-app/api/src/config.test.ts    |     65 +-
+ node_modules/@prayer-app/api/src/config.ts         |     68 +-
+ .../@prayer-app/api/src/google-drive/schema.ts     |      3 +
+ node_modules/@prayer-app/api/src/index.test.ts     |     80 +
+ node_modules/@prayer-app/api/src/index.ts          |    160 +-
+ .../@prayer-app/api/src/notifications/store.ts     |     18 +-
+ node_modules/@prayer-app/core/dist/index.d.ts      |     28 +-
+ node_modules/@prayer-app/core/dist/index.js        |     94 +-
+ node_modules/@prayer-app/core/src/mock-data.ts     |     12 +-
+ node_modules/@prayer-app/core/src/prayer.test.ts   |     74 +
+ node_modules/@prayer-app/core/src/prayer.ts        |    107 +-
+ node_modules/@prayer-app/core/src/types.ts         |     26 +-
+ node_modules/@prayer-app/ios/.gitignore            |     44 -
+ .../@prayer-app/ios/.vscode/extensions.json        |      1 -
+ node_modules/@prayer-app/ios/.vscode/settings.json |      7 -
+ node_modules/@prayer-app/ios/app.json              |     45 -
+ .../@prayer-app/ios/app/(tabs)/_layout.tsx         |     99 -
+ node_modules/@prayer-app/ios/app/(tabs)/duas.tsx   |    229 -
+ node_modules/@prayer-app/ios/app/(tabs)/index.tsx  |    310 -
+ .../@prayer-app/ios/app/(tabs)/progress.tsx        |    166 -
+ node_modules/@prayer-app/ios/app/(tabs)/quran.tsx  |    409 -
+ .../@prayer-app/ios/app/(tabs)/settings.tsx        |    539 -
+ node_modules/@prayer-app/ios/app/+not-found.tsx    |     41 -
+ node_modules/@prayer-app/ios/app/_layout.tsx       |     77 -
+ node_modules/@prayer-app/ios/app/auth-complete.tsx |     57 -
+ node_modules/@prayer-app/ios/app/diagnostics.tsx   |    134 -
+ node_modules/@prayer-app/ios/app/drive-sync.tsx    |    177 -
+ .../@prayer-app/ios/app/duas/[categorySlug].tsx    |    294 -
+ node_modules/@prayer-app/ios/app/modal.tsx         |     85 -
+ .../@prayer-app/ios/app/quran/[chapterId].tsx      |    298 -
+ .../ios/assets/fonts/SpaceMono-Regular.ttf         |    Bin 93252 -> 0 bytes
+ .../ios/assets/images/android-icon-background.png  |    Bin 17549 -> 0 bytes
+ .../ios/assets/images/android-icon-foreground.png  |    Bin 78796 -> 0 bytes
+ .../ios/assets/images/android-icon-monochrome.png  |    Bin 4140 -> 0 bytes
+ .../@prayer-app/ios/assets/images/favicon.png      |    Bin 1129 -> 0 bytes
+ .../@prayer-app/ios/assets/images/icon.png         |    Bin 393493 -> 0 bytes
+ .../@prayer-app/ios/assets/images/splash-icon.png  |    Bin 17547 -> 0 bytes
+ .../ios/assets/sounds/ASSET_LICENSES.md            |     19 -
+ .../@prayer-app/ios/assets/sounds/athan.wav        |    Bin 682712 -> 0 bytes
+ .../@prayer-app/ios/assets/sounds/reminder.wav     |    Bin 52964 -> 0 bytes
+ node_modules/@prayer-app/ios/eas.json              |     21 -
+ node_modules/@prayer-app/ios/package.json          |     55 -
+ .../ios/src/components/CollapsibleSection.tsx      |     73 -
+ .../@prayer-app/ios/src/components/SectionCard.tsx |     47 -
+ .../@prayer-app/ios/src/components/StatPill.tsx    |     38 -
+ .../ios/src/components/ThemeModeSelector.tsx       |     71 -
+ .../@prayer-app/ios/src/config/app-config.ts       |      8 -
+ .../ios/src/content/content-provider.tsx           |    116 -
+ .../@prayer-app/ios/src/content/database.ts        |    716 -
+ .../@prayer-app/ios/src/content/seed/data.ts       |      6 -
+ .../content/seed/duas.hisnul-muslim.bundle.json    |      1 -
+ .../ios/src/content/seed/quran.en.bundle.json      |      1 -
+ node_modules/@prayer-app/ios/src/content/types.ts  |    140 -
+ .../ios/src/hooks/useProductionStatus.ts           |     65 -
+ node_modules/@prayer-app/ios/src/lib/api/client.ts |     93 -
+ .../ios/src/lib/storage/drive-sync-storage.ts      |     48 -
+ .../storage/notification-storage-schema.test.ts    |     51 -
+ .../src/lib/storage/notification-storage-schema.ts |    123 -
+ .../ios/src/lib/storage/notification-storage.ts    |     93 -
+ .../src/lib/storage/prayer-storage-schema.test.ts  |     86 -
+ .../ios/src/lib/storage/prayer-storage-schema.ts   |    196 -
+ .../ios/src/lib/storage/prayer-storage.ts          |    128 -
+ .../ios/src/lib/storage/theme-storage.ts           |    124 -
+ .../ios/src/notifications/mobile-scheduler.test.ts |    296 -
+ .../ios/src/notifications/mobile-scheduler.ts      |    159 -
+ .../src/notifications/notification-provider.tsx    |    347 -
+ .../ios/src/prayer/ManualLocationForm.tsx          |    220 -
+ .../ios/src/prayer/location-time-zone.ts           |     33 -
+ .../@prayer-app/ios/src/prayer/prayer-provider.tsx |    360 -
+ .../ios/src/sync/google-drive-sync-provider.tsx    |    400 -
+ node_modules/@prayer-app/ios/src/theme/palette.ts  |     65 -
+ .../@prayer-app/ios/src/theme/theme-provider.tsx   |    114 -
+ .../@prayer-app/ios/src/types/tz-lookup.d.ts       |      3 -
+ node_modules/@prayer-app/ios/tsconfig.json         |     17 -
+ .../@prayer-app/web/app/(tabs)/_layout.tsx         |     43 +-
+ node_modules/@prayer-app/web/app/(tabs)/duas.tsx   |      3 +-
+ node_modules/@prayer-app/web/app/(tabs)/index.tsx  |    506 +-
+ .../@prayer-app/web/app/(tabs)/mosques.tsx         |    197 +-
+ .../@prayer-app/web/app/(tabs)/progress.tsx        |      3 +-
+ node_modules/@prayer-app/web/app/(tabs)/qibla.tsx  |      5 +-
+ node_modules/@prayer-app/web/app/(tabs)/quran.tsx  |      5 +-
+ .../@prayer-app/web/app/(tabs)/settings.tsx        |    232 +-
+ node_modules/@prayer-app/web/app/diagnostics.tsx   |      6 +
+ .../@prayer-app/web/app/quran/[chapterId].tsx      |      2 +-
+ node_modules/@prayer-app/web/package.json          |    110 +-
+ .../web/src/components/ThemeAccentSelector.tsx     |      8 +-
+ .../web/src/components/ThemeModeSelector.tsx       |     35 +-
+ .../@prayer-app/web/src/config/app-config.ts       |     39 +-
+ .../web/src/content/content-provider.tsx           |     44 +-
+ .../@prayer-app/web/src/content/database.ts        |      1 -
+ .../@prayer-app/web/src/content/database.web.ts    |    207 +-
+ .../@prayer-app/web/src/content/seed/data.ts       |     15 +-
+ node_modules/@prayer-app/web/src/content/types.ts  |     89 +
+ node_modules/@prayer-app/web/src/lib/api/client.ts |     21 +-
+ .../src/lib/storage/notification-storage-schema.ts |      2 +-
+ .../src/lib/storage/prayer-storage-schema.test.ts  |      4 +
+ .../web/src/lib/storage/prayer-storage-schema.ts   |     14 +-
+ .../web/src/notifications/mobile-scheduler.test.ts |      4 +-
+ .../src/notifications/notification-provider.tsx    |     51 +-
+ .../@prayer-app/web/src/prayer/prayer-provider.tsx |    100 +-
+ .../web/src/sync/google-drive-sync-provider.tsx    |      7 +-
+ package-lock.json                                  |   1145 +-
+ package.json                                       |     15 +-
+ packages/core/dist/index.d.ts                      |     28 +-
+ packages/core/dist/index.js                        |     94 +-
+ packages/core/src/mock-data.ts                     |     12 +-
+ packages/core/src/prayer.test.ts                   |     74 +
+ packages/core/src/prayer.ts                        |    107 +-
+ packages/core/src/types.ts                         |     26 +-
+ scripts/release-preflight.mjs                      |    155 +-
+ web/app/(tabs)/duas.tsx                            |      3 +-
+ web/app/(tabs)/index.tsx                           |    506 +-
+ web/app/(tabs)/mosques.tsx                         |    197 +-
+ web/app/(tabs)/progress.tsx                        |      3 +-
+ web/app/(tabs)/qibla.tsx                           |      5 +-
+ web/app/(tabs)/quran.tsx                           |      5 +-
+ web/app/(tabs)/settings.tsx                        |    232 +-
+ web/app/diagnostics.tsx                            |      6 +
+ web/app/quran/[chapterId].tsx                      |      2 +-
+ web/package.json                                   |    110 +-
+ web/src/components/ThemeAccentSelector.tsx         |      8 +-
+ web/src/components/ThemeModeSelector.tsx           |     35 +-
+ web/src/config/app-config.ts                       |     39 +-
+ web/src/content/database.ts                        |      1 -
+ web/src/lib/api/client.ts                          |     21 +-
+ web/src/lib/storage/notification-storage-schema.ts |      2 +-
+ web/src/lib/storage/prayer-storage-schema.test.ts  |      3 +
+ web/src/lib/storage/prayer-storage-schema.ts       |     14 +-
+ web/src/prayer/prayer-provider.tsx                 |    100 +-
+ 334 files changed, 5317 insertions(+), 2150831 deletions(-)

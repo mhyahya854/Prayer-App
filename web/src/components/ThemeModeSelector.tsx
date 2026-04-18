@@ -1,30 +1,30 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { ThemePreference } from '@/src/theme/theme-provider';
 import { useAppPalette } from '@/src/theme/palette';
+import type { ThemePreference } from '@/src/theme/theme-provider';
 
 const options: Array<{
   description: string;
-  icon: string;
   id: ThemePreference;
+  label: string;
   title: string;
 }> = [
   {
-    description: 'Switch between day & night mode depending on the time of day.',
-    icon: '📱',
+    description: 'Switch between day and night mode depending on the time of day.',
     id: 'system',
+    label: 'AUTO',
     title: 'Auto',
   },
   {
     description: 'Stay fixed in day mode on the prayer time page.',
-    icon: '☀️',
     id: 'light',
+    label: 'DAY',
     title: 'Day Mode',
   },
   {
     description: 'Stay fixed in night mode on the prayer time page.',
-    icon: '🌙',
     id: 'dark',
+    label: 'NIGHT',
     title: 'Night Mode',
   },
 ];
@@ -56,7 +56,18 @@ export function ThemeModeSelector({ onChange, value }: ThemeModeSelectorProps) {
             ]}
           >
             <View style={styles.optionTopRow}>
-              <Text style={styles.optionIcon}>{option.icon}</Text>
+              <Text
+                style={[
+                  styles.optionBadge,
+                  {
+                    backgroundColor: isActive ? palette.accentSoft : palette.surface,
+                    borderColor: isActive ? palette.accent : palette.border,
+                    color: isActive ? palette.accent : palette.subtleText,
+                  },
+                ]}
+              >
+                {option.label}
+              </Text>
               <Text
                 style={[
                   styles.optionTitle,
@@ -94,8 +105,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  optionIcon: {
-    fontSize: 16,
+  optionBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   optionTitle: {
     fontSize: 16,

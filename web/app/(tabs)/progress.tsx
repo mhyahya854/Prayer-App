@@ -94,7 +94,7 @@ export default function ProgressScreen() {
             </View>
           ))
         ) : (
-          <Text style={[styles.rowSubtitle, { color: palette.subtleText }]}>Loading your history…</Text>
+          <Text style={[styles.rowSubtitle, { color: palette.subtleText }]}>Loading your history...</Text>
         )}
       </SectionCard>
 
@@ -160,3 +160,4 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
 });
+

@@ -125,7 +125,7 @@ export default function DuasScreen() {
       </SectionCard>
 
       <Text style={[styles.attribution, { color: palette.subtleText }]}>
-        {duaSource.collection} · {duaSource.name} {duaSource.version} · {duaSource.license}
+        {duaSource.collection} | {duaSource.name} {duaSource.version} | {duaSource.license}
       </Text>
       {error ? <Text style={[styles.helperCopy, { color: palette.danger }]}>{error}</Text> : null}
     </ScrollView>
@@ -226,3 +226,4 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 });
+

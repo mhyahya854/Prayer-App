@@ -1,196 +1,68 @@
+import type { MosqueSearchResponse, MosqueSearchResult, MosqueSource } from '@prayer-app/core';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { appConfig } from '@/src/config/app-config';
+import { fetchNearbyMosques } from '@/src/lib/api/client';
 import { usePrayerData } from '@/src/prayer/prayer-provider';
 import { useAppPalette } from '@/src/theme/palette';
 
-interface MosqueResult {
-  address: string;
-  distanceKm: number;
-  id: string;
-  latitude: number;
-  longitude: number;
-  name: string;
-  source: 'google' | 'openstreetmap';
-}
+const radiusOptions = [3, 7, 12, 20] as const;
 
-const radiusOptions = [3, 7, 12, 20];
+function buildProviderMessage(response: MosqueSearchResponse) {
+  const degradedProviders = (Object.entries(response.providerStatus) as Array<
+    [MosqueSource, MosqueSearchResponse['providerStatus'][MosqueSource]]
+  >)
+    .filter(([, status]) => status === 'error')
+    .map(([source]) => (source === 'google' ? 'Google Places' : 'OpenStreetMap'));
 
-function toRad(value: number) {
-  return (value * Math.PI) / 180;
-}
-
-function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const earthRadiusKm = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadiusKm * c;
-}
-
-async function fetchFromGooglePlaces(
-  latitude: number,
-  longitude: number,
-  radiusKm: number,
-): Promise<MosqueResult[]> {
-  if (!appConfig.googleMapsApiKey) {
-    return [];
+  if (degradedProviders.length === 0) {
+    return null;
   }
 
-  const radiusMeters = Math.min(radiusKm * 1000, 50000);
-  const url =
-    `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
-    `?location=${latitude},${longitude}` +
-    `&radius=${radiusMeters}` +
-    `&keyword=mosque` +
-    `&key=${encodeURIComponent(appConfig.googleMapsApiKey)}`;
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error('Google Maps search failed. Check API key and Places API access.');
-  }
-
-  const payload = (await response.json()) as {
-    results?: Array<{
-      geometry?: { location?: { lat?: number; lng?: number } };
-      name?: string;
-      place_id?: string;
-      vicinity?: string;
-    }>;
-    status?: string;
-  };
-
-  if (payload.status && payload.status !== 'OK' && payload.status !== 'ZERO_RESULTS') {
-    throw new Error(`Google Maps returned ${payload.status}.`);
-  }
-
-  return (payload.results ?? [])
-    .filter((item) => item.geometry?.location?.lat && item.geometry?.location?.lng && item.name)
-    .map((item) => {
-      const lat = item.geometry!.location!.lat!;
-      const lng = item.geometry!.location!.lng!;
-      return {
-        address: item.vicinity ?? 'Address unavailable',
-        distanceKm: getDistanceKm(latitude, longitude, lat, lng),
-        id: item.place_id ?? `google-${item.name}-${lat}-${lng}`,
-        latitude: lat,
-        longitude: lng,
-        name: item.name!,
-        source: 'google' as const,
-      };
-    });
-}
-
-async function fetchFromOpenStreetMap(
-  latitude: number,
-  longitude: number,
-  radiusKm: number,
-): Promise<MosqueResult[]> {
-  const radiusMeters = Math.min(radiusKm * 1000, 25000);
-  const query = `[out:json][timeout:25];
-(
-  node["amenity"="place_of_worship"]["religion"="muslim"](around:${radiusMeters},${latitude},${longitude});
-  way["amenity"="place_of_worship"]["religion"="muslim"](around:${radiusMeters},${latitude},${longitude});
-  relation["amenity"="place_of_worship"]["religion"="muslim"](around:${radiusMeters},${latitude},${longitude});
-);
-out center tags;`;
-
-  const response = await fetch('https://overpass-api.de/api/interpreter', {
-    body: query,
-    method: 'POST',
-  });
-
-  if (!response.ok) {
-    throw new Error('OpenStreetMap mosque search failed.');
-  }
-
-  const payload = (await response.json()) as {
-    elements?: Array<{
-      center?: { lat?: number; lon?: number };
-      id: number;
-      lat?: number;
-      lon?: number;
-      tags?: Record<string, string>;
-      type: string;
-    }>;
-  };
-
-  const mapped = (payload.elements ?? []).map((element) => {
-      const lat = element.lat ?? element.center?.lat;
-      const lon = element.lon ?? element.center?.lon;
-      const name = element.tags?.name || element.tags?.['name:en'] || 'Masjid';
-
-      if (!lat || !lon) {
-        return null;
-      }
-
-      return {
-        address: element.tags?.['addr:full'] || element.tags?.['addr:street'] || 'Address unavailable',
-        distanceKm: getDistanceKm(latitude, longitude, lat, lon),
-        id: `osm-${element.type}-${element.id}`,
-        latitude: lat,
-        longitude: lon,
-        name,
-        source: 'openstreetmap' as const,
-      };
-    });
-
-  return mapped.filter((item): item is NonNullable<typeof item> => item !== null);
-}
-
-function dedupeAndSort(results: MosqueResult[]) {
-  const map = new Map<string, MosqueResult>();
-
-  for (const result of results) {
-    const key = `${result.name.toLowerCase()}-${result.latitude.toFixed(4)}-${result.longitude.toFixed(4)}`;
-    const current = map.get(key);
-    if (!current || result.distanceKm < current.distanceKm) {
-      map.set(key, result);
-    }
-  }
-
-  return [...map.values()].sort((a, b) => a.distanceKm - b.distanceKm);
+  return `${degradedProviders.join(' and ')} are temporarily unavailable. Showing partial results.`;
 }
 
 export default function MosquesScreen() {
   const palette = useAppPalette();
   const { refreshLocation, savedLocation } = usePrayerData();
   const [radiusKm, setRadiusKm] = useState<number>(7);
-  const [results, setResults] = useState<MosqueResult[]>([]);
+  const [results, setResults] = useState<MosqueSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [providerMessage, setProviderMessage] = useState<string | null>(null);
 
   const locationLabel = useMemo(() => savedLocation?.label ?? 'No location selected', [savedLocation]);
 
   async function searchMosques() {
     if (!savedLocation) {
       setError('Set your location first in Settings so nearby masjids can be found.');
+      setProviderMessage(null);
       return;
     }
 
     setIsLoading(true);
     setError(null);
+    setProviderMessage(null);
 
     try {
       const { latitude, longitude } = savedLocation.coordinates;
-      const [google, osm] = await Promise.all([
-        fetchFromGooglePlaces(latitude, longitude, radiusKm).catch(() => []),
-        fetchFromOpenStreetMap(latitude, longitude, radiusKm),
-      ]);
+      const response = await fetchNearbyMosques(latitude, longitude, radiusKm);
+      const nextResults = response.results.slice(0, 30);
 
-      const merged = dedupeAndSort([...google, ...osm]).slice(0, 30);
-      setResults(merged);
+      setResults(nextResults);
+      setProviderMessage(buildProviderMessage(response));
 
-      if (merged.length === 0) {
+      if (nextResults.length === 0) {
         setError('No nearby masjids found in this radius. Try a larger range.');
       }
     } catch (nextError) {
       setResults([]);
-      setError(nextError instanceof Error ? nextError.message : 'Unable to load mosque results right now.');
+      setProviderMessage(null);
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : 'Unable to load mosque results right now.',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -205,7 +77,7 @@ export default function MosquesScreen() {
       <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
         <Text style={[styles.title, { color: palette.text }]}>Mosque Finder</Text>
         <Text style={[styles.copy, { color: palette.subtleText }]}>
-          Discover nearby masjids from Google Maps and OpenStreetMap Muslim place data.
+          Discover nearby masjids through the Prayer App search service.
         </Text>
         <Text style={[styles.location, { color: palette.subtleText }]}>Location: {locationLabel}</Text>
       </View>
@@ -219,6 +91,8 @@ export default function MosquesScreen() {
           <Text style={[styles.actionButtonLabel, { color: palette.text }]}>Refresh location</Text>
         </Pressable>
         <Pressable
+          data-testid="find-mosques-button"
+          testID="find-mosques-button"
           accessibilityRole="button"
           onPress={() => void searchMosques()}
           style={[styles.actionButton, { backgroundColor: palette.accent }]}
@@ -255,10 +129,13 @@ export default function MosquesScreen() {
       {isLoading ? (
         <View style={[styles.loadingCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <ActivityIndicator color={palette.accent} />
-          <Text style={[styles.loadingLabel, { color: palette.subtleText }]}>Searching nearby masjids…</Text>
+          <Text style={[styles.loadingLabel, { color: palette.subtleText }]}>Searching nearby masjids...</Text>
         </View>
       ) : null}
 
+      {providerMessage ? (
+        <Text style={[styles.infoText, { color: palette.subtleText }]}>{providerMessage}</Text>
+      ) : null}
       {error ? <Text style={[styles.errorText, { color: palette.danger }]}>{error}</Text> : null}
 
       <View style={styles.resultsList}>
@@ -276,7 +153,7 @@ export default function MosquesScreen() {
               </Text>
             </View>
             <Text style={[styles.resultMeta, { color: palette.subtleText }]}>
-              {result.address} · {result.source === 'google' ? 'Google Maps' : 'OpenStreetMap'}
+              {result.address} | {result.source === 'google' ? 'Google Places' : 'OpenStreetMap'}
             </Text>
             <Pressable
               accessibilityRole="link"
@@ -369,6 +246,10 @@ const styles = StyleSheet.create({
   },
   loadingLabel: {
     fontSize: 13,
+  },
+  infoText: {
+    fontSize: 13,
+    lineHeight: 19,
   },
   errorText: {
     fontSize: 13,

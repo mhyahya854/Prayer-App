@@ -10,7 +10,7 @@ import {
   type TimestampedValue,
 } from '@prayer-app/core';
 
-export const prayerStorageVersion = 2;
+export const prayerStorageVersion = 3;
 
 interface VersionedEnvelope<T> {
   data: T;
@@ -43,7 +43,10 @@ function sanitizePrayerPreferences(value: unknown): PrayerPreferences {
 
   const calculationMethod =
     typeof value.calculationMethod === 'string' ? value.calculationMethod : fallback.calculationMethod;
+  const calculationMode =
+    typeof value.calculationMode === 'string' ? value.calculationMode : fallback.calculationMode;
   const madhab = typeof value.madhab === 'string' ? value.madhab : fallback.madhab;
+  const timeFormat = typeof value.timeFormat === 'string' ? value.timeFormat : fallback.timeFormat;
   const adjustments = isRecord(value.adjustments) ? value.adjustments : {};
 
   return {
@@ -57,6 +60,10 @@ function sanitizePrayerPreferences(value: unknown): PrayerPreferences {
         typeof adjustments.maghrib === 'number' ? adjustments.maghrib : fallback.adjustments.maghrib,
       isha: typeof adjustments.isha === 'number' ? adjustments.isha : fallback.adjustments.isha,
     },
+    autoRefreshLocation:
+      typeof value.autoRefreshLocation === 'boolean'
+        ? value.autoRefreshLocation
+        : fallback.autoRefreshLocation,
     calculationMethod:
       calculationMethod === 'muslim-world-league' ||
       calculationMethod === 'egyptian' ||
@@ -68,7 +75,12 @@ function sanitizePrayerPreferences(value: unknown): PrayerPreferences {
       calculationMethod === 'turkey'
         ? calculationMethod
         : fallback.calculationMethod,
+    calculationMode:
+      calculationMode === 'auto' || calculationMode === 'manual'
+        ? calculationMode
+        : fallback.calculationMode,
     madhab: madhab === 'hanafi' || madhab === 'shafi' ? madhab : fallback.madhab,
+    timeFormat: timeFormat === '24h' || timeFormat === '12h' ? timeFormat : fallback.timeFormat,
   };
 }
 

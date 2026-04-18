@@ -213,7 +213,7 @@ export default function QuranScreen() {
           value={searchQuery}
         />
         {isSearching ? (
-          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Searching…</Text>
+          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Searching...</Text>
         ) : null}
         {!isSearching && searchQuery.trim() && searchResults.length === 0 ? (
           <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
@@ -306,7 +306,7 @@ export default function QuranScreen() {
       </SectionCard>
 
       <Text style={[styles.attribution, { color: palette.subtleText }]}>
-        {quranSource.collection} · {quranSource.name} {quranSource.version} · {quranSource.license}
+        {quranSource.collection} | {quranSource.name} {quranSource.version} | {quranSource.license}
       </Text>
       {error ? <Text style={[styles.helperCopy, { color: palette.danger }]}>{error}</Text> : null}
     </ScrollView>
@@ -481,3 +481,4 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 });
+

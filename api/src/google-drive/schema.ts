@@ -35,7 +35,10 @@ const prayerPreferencesSchema = z.object({
     'qatar',
     'turkey',
   ]),
+  autoRefreshLocation: z.boolean(),
+  calculationMode: z.enum(['manual', 'auto']),
   madhab: z.enum(['shafi', 'hanafi']),
+  timeFormat: z.enum(['12h', '24h']),
 });
 
 const notificationPreferencesSchema = z.object({

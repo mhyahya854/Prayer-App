@@ -6,8 +6,10 @@ import {
   calculatePrayerMetrics,
   computePrayerDay,
   formatDateKey,
+  formatPrayerTime,
   getDefaultPrayerNotificationPreferences,
   getDefaultPrayerPreferences,
+  resolveCalculationMethodForTimeZone,
   setPrayerCompletion,
   shiftDateKey,
   type PrayerLogStore,
@@ -37,6 +39,41 @@ test('computePrayerDay returns the full prayer schedule in order', () => {
     ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'],
   );
   assert.equal(result.prayers.length, 6);
+});
+
+test('default prayer preferences include the new web-safe behavior flags', () => {
+  assert.deepEqual(getDefaultPrayerPreferences(), {
+    adjustments: {
+      fajr: 0,
+      sunrise: 0,
+      dhuhr: 0,
+      asr: 0,
+      maghrib: 0,
+      isha: 0,
+    },
+    autoRefreshLocation: false,
+    calculationMethod: 'muslim-world-league',
+    calculationMode: 'manual',
+    madhab: 'shafi',
+    timeFormat: '12h',
+  });
+});
+
+test('auto calculation resolves the method from the saved timezone', () => {
+  assert.equal(resolveCalculationMethodForTimeZone('America/New_York'), 'north-america');
+  assert.equal(resolveCalculationMethodForTimeZone('Asia/Kuala_Lumpur'), 'singapore');
+  assert.equal(resolveCalculationMethodForTimeZone('Asia/Riyadh'), 'umm-al-qura');
+  assert.equal(resolveCalculationMethodForTimeZone('Europe/Istanbul'), 'turkey');
+  assert.equal(resolveCalculationMethodForTimeZone('Africa/Cairo'), 'egyptian');
+  assert.equal(resolveCalculationMethodForTimeZone('Asia/Karachi'), 'karachi');
+  assert.equal(resolveCalculationMethodForTimeZone('Europe/London'), 'muslim-world-league');
+});
+
+test('formatPrayerTime supports 12-hour and 24-hour output', () => {
+  const sample = new Date('2026-03-25T08:48:00.000Z');
+
+  assert.equal(formatPrayerTime(sample, 'Asia/Kuala_Lumpur', '12h'), '4:48 PM');
+  assert.equal(formatPrayerTime(sample, 'Asia/Kuala_Lumpur', '24h'), '16:48');
 });
 
 test('formatDateKey respects extreme timezone offsets around midnight', () => {
@@ -214,6 +251,41 @@ test('calculation methods produce different schedules for the same coordinates',
   assert.notEqual(muslimWorldLeague.prayers[0]?.isoTime, northAmerica.prayers[0]?.isoTime);
 });
 
+test('auto calculation mode uses the timezone mapping instead of the manual method', () => {
+  const auto = computePrayerDay({
+    coordinates: {
+      latitude: 3.139,
+      longitude: 101.6869,
+    },
+    dateKey: '2026-03-25',
+    locationLabel: 'Kuala Lumpur',
+    preferences: {
+      ...getDefaultPrayerPreferences(),
+      calculationMethod: 'north-america',
+      calculationMode: 'auto',
+    },
+    timeZone: 'Asia/Kuala_Lumpur',
+  });
+  const manual = computePrayerDay({
+    coordinates: {
+      latitude: 3.139,
+      longitude: 101.6869,
+    },
+    dateKey: '2026-03-25',
+    locationLabel: 'Kuala Lumpur',
+    preferences: {
+      ...getDefaultPrayerPreferences(),
+      calculationMethod: 'north-america',
+      calculationMode: 'manual',
+    },
+    timeZone: 'Asia/Kuala_Lumpur',
+  });
+
+  assert.equal(auto.methodLabel, 'Singapore / Malaysia');
+  assert.equal(manual.methodLabel, 'ISNA / North America');
+  assert.notEqual(auto.prayers[0]?.isoTime, manual.prayers[0]?.isoTime);
+});
+
 test('hanafi madhab produces a later Asr than shafi for the same day', () => {
   const defaults = getDefaultPrayerPreferences();
   const shafi = computePrayerDay({
@@ -333,6 +405,7 @@ test('next prayer rolls over to tomorrow fajr after isha', () => {
   });
 
   assert.equal(afterIsha.nextPrayer, 'Fajr');
+  assert.equal(afterIsha.nextPrayerIsoTime, tomorrow.prayers[0]?.isoTime ?? null);
   assert.equal(afterIsha.nextPrayerTime, tomorrow.prayers[0]?.time ?? null);
 });
 
@@ -367,6 +440,7 @@ test('next prayer points to today fajr shortly before fajr begins', () => {
   });
 
   assert.equal(beforeFajr.nextPrayer, 'Fajr');
+  assert.equal(beforeFajr.nextPrayerIsoTime, baseline.prayers[0]?.isoTime ?? null);
   assert.equal(beforeFajr.nextPrayerTime, baseline.prayers[0]?.time ?? null);
 });
 

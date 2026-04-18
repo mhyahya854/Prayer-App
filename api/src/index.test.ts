@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createSavedLocation, getDefaultPrayerNotificationPreferences, getDefaultPrayerPreferences } from '@prayer-app/core';
 
 import { buildServer } from './index';
+import type { MosqueSearchService } from './mosques/service';
 import type { NotificationService } from './notifications/service';
 
 const baseLocation = createSavedLocation(
@@ -52,6 +53,21 @@ function createNotificationServiceStub(): NotificationService {
   };
 }
 
+function createMosqueSearchServiceStub(): MosqueSearchService {
+  return {
+    async searchNearby() {
+      return {
+        providerErrors: {},
+        providerStatus: {
+          google: 'disabled',
+          openstreetmap: 'ok',
+        },
+        results: [],
+      };
+    },
+  };
+}
+
 test('invalid prayer query returns a stable 400 error envelope', async (t) => {
   const app = buildServer({
     notificationService: createNotificationServiceStub(),
@@ -93,6 +109,7 @@ test('unimplemented routes return the shared 501 error envelope', async (t) => {
 
 test('api routes are rate limited with the shared error envelope', async (t) => {
   const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
     notificationService: createNotificationServiceStub(),
     rateLimit: {
       max: 1,
@@ -121,6 +138,7 @@ test('api routes are rate limited with the shared error envelope', async (t) => 
 
 test('readiness endpoint returns ready in development with baseline checks', async (t) => {
   const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
     notificationService: createNotificationServiceStub(),
   });
   t.after(async () => {
@@ -142,6 +160,7 @@ test('readiness endpoint returns ready in development with baseline checks', asy
 
 test('web notification sync returns scheduled job counts', async (t) => {
   const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
     notificationService: createNotificationServiceStub(),
   });
   t.after(async () => {
@@ -176,6 +195,7 @@ test('web notification sync returns scheduled job counts', async (t) => {
 
 test('invalid web notification payloads return the shared 400 envelope', async (t) => {
   const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
     notificationService: createNotificationServiceStub(),
   });
   t.after(async () => {
@@ -198,6 +218,7 @@ test('invalid web notification payloads return the shared 400 envelope', async (
 
 test('invalid web notification sync payloads return the shared 400 envelope', async (t) => {
   const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
     notificationService: createNotificationServiceStub(),
   });
   t.after(async () => {
@@ -236,6 +257,7 @@ test('invalid web notification sync payloads return the shared 400 envelope', as
 
 test('invalid web notification refresh payloads return the shared 400 envelope', async (t) => {
   const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
     notificationService: createNotificationServiceStub(),
   });
   t.after(async () => {
@@ -260,4 +282,41 @@ test('invalid web notification refresh payloads return the shared 400 envelope',
 
   assert.equal(response.statusCode, 400);
   assert.equal(payload.error.code, 'invalid_notification_refresh_request');
+});
+
+test('runtime status is hidden outside development', async (t) => {
+  const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
+    notificationService: createNotificationServiceStub(),
+    stage: 'production',
+  });
+  t.after(async () => {
+    await app.close();
+  });
+
+  const response = await app.inject({
+    method: 'GET',
+    url: '/api/runtime',
+  });
+
+  assert.equal(response.statusCode, 404);
+});
+
+test('invalid mosque queries return the shared 400 envelope', async (t) => {
+  const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
+    notificationService: createNotificationServiceStub(),
+  });
+  t.after(async () => {
+    await app.close();
+  });
+
+  const response = await app.inject({
+    method: 'GET',
+    url: '/api/mosques/nearby?latitude=3.139&longitude=101.6869&radiusKm=5',
+  });
+  const payload = response.json();
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(payload.error.code, 'invalid_mosque_query');
 });

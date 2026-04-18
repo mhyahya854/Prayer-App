@@ -21,8 +21,11 @@ test('legacy prayer preferences are migrated into the versioned schema', () => {
   });
 
   assert.equal(parsed.shouldPersist, true);
+  assert.equal(parsed.data.value.autoRefreshLocation, false);
   assert.equal(parsed.data.value.calculationMethod, 'singapore');
+  assert.equal(parsed.data.value.calculationMode, 'manual');
   assert.equal(parsed.data.value.madhab, 'hanafi');
+  assert.equal(parsed.data.value.timeFormat, '12h');
   assert.equal(parsed.data.value.adjustments.fajr, 3);
 });
 

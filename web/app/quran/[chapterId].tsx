@@ -155,7 +155,7 @@ export default function QuranChapterScreen() {
       } else {
         setError('Failed to export. Note: This feature requires signing back into Google Drive to grant visible folder permissions.');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred during export.');
     } finally {
       setIsExporting(false);

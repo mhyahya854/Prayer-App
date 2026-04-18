@@ -11,6 +11,7 @@ import type {
   GoogleDriveExportDocumentRequest,
   GoogleDriveExportDocumentResponse,
   GoogleDriveSessionResponse,
+  MosqueSearchResponse,
   NotificationDisableRequest,
   NotificationRefreshRequest,
   NotificationSyncRequest,
@@ -20,8 +21,16 @@ import type {
 
 import { appConfig } from '@/src/config/app-config';
 
+function getRequiredApiUrl() {
+  if (!appConfig.apiUrl) {
+    throw new Error(appConfig.apiConfigErrors[0] ?? 'The web API is not configured for this environment.');
+  }
+
+  return appConfig.apiUrl;
+}
+
 async function apiRequest<T>(path: string, init?: RequestInit, sessionToken?: string): Promise<T> {
-  const response = await fetch(`${appConfig.apiUrl}${path}`, {
+  const response = await fetch(`${getRequiredApiUrl()}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(sessionToken ? { 'x-prayer-app-session': sessionToken } : {}),
@@ -54,6 +63,16 @@ export function fetchApiHealth() {
 
 export function fetchRuntimeStatus() {
   return apiRequest<RuntimeResponse>('/api/runtime');
+}
+
+export function fetchNearbyMosques(latitude: number, longitude: number, radiusKm: number) {
+  const searchParams = new URLSearchParams({
+    latitude: latitude.toString(),
+    longitude: longitude.toString(),
+    radiusKm: radiusKm.toString(),
+  });
+
+  return apiRequest<MosqueSearchResponse>(`/api/mosques/nearby?${searchParams.toString()}`);
 }
 
 export function syncWebNotifications(payload: NotificationSyncRequest) {

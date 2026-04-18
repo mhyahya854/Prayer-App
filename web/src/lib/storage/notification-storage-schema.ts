@@ -9,7 +9,7 @@ import {
 
 import { createVersionedPayload } from './prayer-storage-schema';
 
-export const notificationStorageVersion = 2;
+export const notificationStorageVersion = 3;
 
 interface ParsedStorageValue<T> {
   data: TimestampedValue<T>;

@@ -13,6 +13,8 @@ export type CalculationMethodId =
   | 'qatar'
   | 'turkey';
 export type MadhabId = 'shafi' | 'hanafi';
+export type PrayerCalculationMode = 'manual' | 'auto';
+export type PrayerTimeFormat = '12h' | '24h';
 
 export interface Coordinates {
   latitude: number;
@@ -41,8 +43,11 @@ export interface PrayerAdjustmentMap {
 
 export interface PrayerPreferences {
   adjustments: PrayerAdjustmentMap;
+  autoRefreshLocation: boolean;
   calculationMethod: CalculationMethodId;
+  calculationMode: PrayerCalculationMode;
   madhab: MadhabId;
+  timeFormat: PrayerTimeFormat;
 }
 
 export type PrayerPreReminderMinutes = 10 | 15 | 20 | 30 | null;
@@ -117,7 +122,7 @@ export interface AppOverview {
 }
 
 export interface PrayerTime {
-  isoTime?: string;
+  isoTime: string;
   isCurrent?: boolean;
   name: PrayerName;
   time: string;
@@ -135,6 +140,7 @@ export interface PrayerDay {
   madhabLabel: string;
   methodLabel: string;
   nextPrayer: PrayerName | null;
+  nextPrayerIsoTime: string | null;
   nextPrayerTime: string | null;
   prayers: PrayerTime[];
   timeZone: string | null;
@@ -232,6 +238,24 @@ export interface RuntimeResponse {
   driveBackupImplemented: boolean;
   googleServerCredentialsConfigured: boolean;
   stage: 'development' | 'staging' | 'production';
+}
+
+export type MosqueSource = 'google' | 'openstreetmap';
+
+export interface MosqueSearchResult {
+  address: string;
+  distanceKm: number;
+  id: string;
+  latitude: number;
+  longitude: number;
+  name: string;
+  source: MosqueSource;
+}
+
+export interface MosqueSearchResponse {
+  providerErrors: Partial<Record<MosqueSource, string>>;
+  providerStatus: Record<MosqueSource, 'disabled' | 'error' | 'ok'>;
+  results: MosqueSearchResult[];
 }
 
 export interface PrayerAppBackupPayload {

@@ -1,11 +1,17 @@
 import { StatusBar } from 'expo-status-bar';
+import { Redirect } from 'expo-router';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { appConfig } from '@/src/config/app-config';
 import { useProductionStatus } from '@/src/hooks/useProductionStatus';
 import { useAppPalette } from '@/src/theme/palette';
 import { SectionCard } from '@/src/components/SectionCard';
 
 export default function DiagnosticsScreen() {
+  if (!appConfig.allowDevelopmentDiagnostics) {
+    return <Redirect href="/" />;
+  }
+
   const palette = useAppPalette();
   const { error, health, isLoading, runtime } = useProductionStatus(true);
 

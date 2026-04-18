@@ -7,18 +7,19 @@ import {
   getDefaultPrayerPreferences,
   setPrayerCompletion,
   type CalculationMethodId,
+  type PrayerCalculationMode,
   type MadhabId,
   type PrayerAdjustmentMap,
   type PrayerDay,
   type PrayerLogStore,
   type PrayerPreferences,
   type PrayerProgressSummary,
+  type PrayerTimeFormat,
   type SavedLocation,
-  type TimestampedValue,
   type TrackablePrayerName,
 } from '@prayer-app/core';
-import { createContext, type PropsWithChildren, useContext, useEffect, useState } from 'react';
-import { AppState } from 'react-native';
+import { createContext, type PropsWithChildren, useContext, useEffect, useRef, useState } from 'react';
+import { AppState, Platform } from 'react-native';
 
 import {
   loadPrayerStorageSnapshot,
@@ -59,8 +60,11 @@ interface PrayerDataContextValue {
   saveManualLocation: (input: ManualLocationInput) => Promise<void>;
   savedLocation: SavedLocation | null;
   savedLocationUpdatedAt: string;
+  setAutoRefreshLocation: (enabled: boolean) => Promise<void>;
   setCalculationMethod: (nextMethod: CalculationMethodId) => Promise<void>;
+  setCalculationMode: (nextMode: PrayerCalculationMode) => Promise<void>;
   setMadhab: (nextMadhab: MadhabId) => Promise<void>;
+  setTimeFormat: (nextFormat: PrayerTimeFormat) => Promise<void>;
   togglePrayerCompletion: (prayerName: TrackablePrayerName) => Promise<void>;
   todayKey: string;
 }
@@ -81,7 +85,20 @@ function buildLocationLabel(
   return `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
 }
 
+function mapPermissionStatus(status: Location.PermissionStatus | undefined): LocationPermissionState {
+  if (status === Location.PermissionStatus.GRANTED) {
+    return 'granted';
+  }
+
+  if (status === Location.PermissionStatus.DENIED) {
+    return 'denied';
+  }
+
+  return 'unknown';
+}
+
 export function PrayerDataProvider({ children }: PropsWithChildren) {
+  const autoRefreshAttemptedRef = useRef(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isRefreshingLocation, setIsRefreshingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -176,10 +193,35 @@ export function PrayerDataProvider({ children }: PropsWithChildren) {
     });
   }
 
+  async function setCalculationMode(nextMode: PrayerCalculationMode) {
+    await persistPreferences({
+      ...prayerPreferences,
+      calculationMode: nextMode,
+    });
+  }
+
   async function setMadhab(nextMadhab: MadhabId) {
     await persistPreferences({
       ...prayerPreferences,
       madhab: nextMadhab,
+    });
+  }
+
+  async function setTimeFormat(nextFormat: PrayerTimeFormat) {
+    await persistPreferences({
+      ...prayerPreferences,
+      timeFormat: nextFormat,
+    });
+  }
+
+  async function setAutoRefreshLocation(enabled: boolean) {
+    if (enabled && !prayerPreferences.autoRefreshLocation) {
+      autoRefreshAttemptedRef.current = false;
+    }
+
+    await persistPreferences({
+      ...prayerPreferences,
+      autoRefreshLocation: enabled,
     });
   }
 
@@ -202,8 +244,8 @@ export function PrayerDataProvider({ children }: PropsWithChildren) {
     try {
       const permissionResponse = await Location.requestForegroundPermissionsAsync();
 
-      if (permissionResponse.status !== 'granted') {
-        setLocationPermission('denied');
+      if (permissionResponse.status !== Location.PermissionStatus.GRANTED) {
+        setLocationPermission(mapPermissionStatus(permissionResponse.status));
         setLocationError('Location permission is required before accurate local prayer times can be calculated.');
         return;
       }
@@ -319,6 +361,51 @@ export function PrayerDataProvider({ children }: PropsWithChildren) {
     ]);
   }
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncLocationPermission() {
+      try {
+        const permissionResponse = await Location.getForegroundPermissionsAsync();
+
+        if (isMounted) {
+          setLocationPermission(mapPermissionStatus(permissionResponse.status));
+        }
+      } catch {
+        if (isMounted) {
+          setLocationPermission(savedLocation ? 'granted' : 'unknown');
+        }
+      }
+    }
+
+    void syncLocationPermission();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [savedLocation]);
+
+  useEffect(() => {
+    if (
+      Platform.OS !== 'web' ||
+      !isHydrated ||
+      savedLocation ||
+      locationPermission === 'denied' ||
+      !prayerPreferences.autoRefreshLocation ||
+      autoRefreshAttemptedRef.current
+    ) {
+      return;
+    }
+
+    autoRefreshAttemptedRef.current = true;
+    void refreshLocation();
+  }, [
+    isHydrated,
+    locationPermission,
+    prayerPreferences.autoRefreshLocation,
+    savedLocation,
+  ]);
+
   return (
     <PrayerDataContext.Provider
       value={{
@@ -338,8 +425,11 @@ export function PrayerDataProvider({ children }: PropsWithChildren) {
         saveManualLocation,
         savedLocation,
         savedLocationUpdatedAt,
+        setAutoRefreshLocation,
         setCalculationMethod,
+        setCalculationMode,
         setMadhab,
+        setTimeFormat,
         togglePrayerCompletion,
         todayKey,
       }}

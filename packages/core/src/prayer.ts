@@ -8,11 +8,13 @@ import {
 
 import type {
   CalculationMethodId,
+  PrayerCalculationMode,
   MadhabId,
   PrayerAdjustmentMap,
   PrayerDay,
   PrayerName,
   PrayerPreferences,
+  PrayerTimeFormat,
   SavedLocation,
   TimeZoneSource,
 } from './types';
@@ -122,6 +124,26 @@ function getMadhabLabel(id: MadhabId) {
   return madhabOptions.find((option) => option.id === id)?.label ?? 'Shafi';
 }
 
+const singaporeTimeZones = new Set([
+  'Asia/Bangkok',
+  'Asia/Brunei',
+  'Asia/Jakarta',
+  'Asia/Kuala_Lumpur',
+  'Asia/Makassar',
+  'Asia/Manila',
+  'Asia/Phnom_Penh',
+  'Asia/Pontianak',
+  'Asia/Singapore',
+  'Asia/Ho_Chi_Minh',
+]);
+
+const karachiTimeZones = new Set([
+  'Asia/Colombo',
+  'Asia/Dhaka',
+  'Asia/Karachi',
+  'Asia/Kolkata',
+]);
+
 function formatWithTimeZone(
   date: Date,
   options: Intl.DateTimeFormatOptions,
@@ -158,11 +180,67 @@ function formatHijriDate(date: Date, timeZone?: string | null) {
   }
 }
 
-function formatPrayerTime(date: Date, timeZone?: string | null) {
+export function resolveCalculationMethodForTimeZone(
+  timeZone?: string | null,
+  fallback: CalculationMethodId = 'muslim-world-league',
+) {
+  if (!timeZone) {
+    return fallback;
+  }
+
+  if (timeZone.startsWith('America/')) {
+    return 'north-america';
+  }
+
+  if (singaporeTimeZones.has(timeZone)) {
+    return 'singapore';
+  }
+
+  if (karachiTimeZones.has(timeZone)) {
+    return 'karachi';
+  }
+
+  if (timeZone === 'Asia/Riyadh') {
+    return 'umm-al-qura';
+  }
+
+  if (timeZone === 'Asia/Qatar') {
+    return 'qatar';
+  }
+
+  if (timeZone === 'Europe/Istanbul') {
+    return 'turkey';
+  }
+
+  if (timeZone === 'Africa/Cairo') {
+    return 'egyptian';
+  }
+
+  return fallback;
+}
+
+export function resolvePrayerCalculationMethod(
+  calculationMode: PrayerCalculationMode,
+  manualMethod: CalculationMethodId,
+  timeZone?: string | null,
+) {
+  if (calculationMode !== 'auto') {
+    return manualMethod;
+  }
+
+  return resolveCalculationMethodForTimeZone(timeZone);
+}
+
+export function formatPrayerTime(
+  date: Date,
+  timeZone?: string | null,
+  timeFormat: PrayerTimeFormat = '12h',
+) {
   return formatWithTimeZone(
     date,
     {
-      hour: 'numeric',
+      hour: timeFormat === '24h' ? '2-digit' : 'numeric',
+      hour12: timeFormat === '12h',
       minute: '2-digit',
     },
     timeZone,
@@ -219,8 +297,11 @@ export function getDefaultPrayerPreferences(): PrayerPreferences {
       maghrib: 0,
       isha: 0,
     },
+    autoRefreshLocation: false,
     calculationMethod: 'muslim-world-league',
+    calculationMode: 'manual',
     madhab: 'shafi',
+    timeFormat: '12h',
   };
 }
 
@@ -262,7 +343,12 @@ export function computePrayerDay({
   const normalizedDate = createCalendarDateFromDateKey(effectiveDateKey);
   const nextDate = createCalendarDateFromDateKey(shiftDateKey(effectiveDateKey, 1));
   const adhanCoordinates = new AdhanCoordinates(coordinates.latitude, coordinates.longitude);
-  const parameters = calculationParameterFactories[preferences.calculationMethod]();
+  const effectiveCalculationMethod = resolvePrayerCalculationMethod(
+    preferences.calculationMode,
+    preferences.calculationMethod,
+    timeZone,
+  );
+  const parameters = calculationParameterFactories[effectiveCalculationMethod]();
 
   parameters.madhab = preferences.madhab === 'hanafi' ? Madhab.Hanafi : Madhab.Shafi;
   parameters.highLatitudeRule = HighLatitudeRule.recommended(adhanCoordinates);
@@ -280,7 +366,7 @@ export function computePrayerDay({
   const currentPrayer = prayerNameMap[currentPrayerKey];
   const isAfterIsha = now >= prayerTimes.isha;
   const nextPrayer = nextPrayerKey === 'none' && isAfterIsha ? 'Fajr' : prayerNameMap[nextPrayerKey];
-  const nextPrayerTime =
+  const nextPrayerDate =
     (nextPrayerKey === 'fajr' || (nextPrayerKey === 'none' && isAfterIsha)) && isAfterIsha
       ? nextPrayerTimes.fajr
       : nextPrayer
@@ -309,11 +395,11 @@ export function computePrayerDay({
     isCurrent: currentPrayer === entry.name,
     isNext: nextPrayer === entry.name,
     name: entry.name,
-    time: formatPrayerTime(entry.value, timeZone),
+    time: formatPrayerTime(entry.value, timeZone, preferences.timeFormat),
     window:
       entry.name === 'Sunrise'
-        ? `Daylight until ${formatPrayerTime(prayerWindows.Sunrise, timeZone)}`
-        : `Ends ${formatPrayerTime(prayerWindows[entry.name], timeZone)}`,
+        ? `Daylight until ${formatPrayerTime(prayerWindows.Sunrise, timeZone, preferences.timeFormat)}`
+        : `Ends ${formatPrayerTime(prayerWindows[entry.name], timeZone, preferences.timeFormat)}`,
   }));
 
   return {
@@ -324,9 +410,12 @@ export function computePrayerDay({
     gregorianDate: formatGregorianDate(dateAnchor, timeZone),
     hijriDate: formatHijriDate(dateAnchor, timeZone),
     madhabLabel: getMadhabLabel(preferences.madhab),
-    methodLabel: getCalculationMethodLabel(preferences.calculationMethod),
+    methodLabel: getCalculationMethodLabel(effectiveCalculationMethod),
     nextPrayer,
-    nextPrayerTime: nextPrayerTime ? formatPrayerTime(nextPrayerTime, timeZone) : null,
+    nextPrayerIsoTime: nextPrayerDate ? nextPrayerDate.toISOString() : null,
+    nextPrayerTime: nextPrayerDate
+      ? formatPrayerTime(nextPrayerDate, timeZone, preferences.timeFormat)
+      : null,
     prayers,
     timeZone: timeZone ?? null,
   };

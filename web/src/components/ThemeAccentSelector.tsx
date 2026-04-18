@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ThemeAccent } from '@/src/lib/storage/theme-storage';
 import { useAppPalette } from '@/src/theme/palette';
 
-const accentOptions: Array<{ key: ThemeAccent; label: string; color: string }> = [
+const accentOptions: Array<{ color: string; key: ThemeAccent; label: string }> = [
   { key: 'default', label: 'Default', color: '#8B6F4E' },
   { key: 'gold', label: 'Gold', color: '#D4A017' },
   { key: 'emerald', label: 'Emerald', color: '#4FB68A' },
@@ -41,7 +41,7 @@ export function ThemeAccentSelector({ onChange, value }: ThemeAccentSelectorProp
           >
             <View style={styles.swatchTopRow}>
               <Text style={styles.label}>{option.label}</Text>
-              {isActive ? <Text style={styles.check}>{'✓'}</Text> : null}
+              {isActive ? <Text style={styles.check}>Active</Text> : null}
             </View>
             <Text style={styles.helper}>Apply this app color theme</Text>
           </Pressable>
@@ -71,9 +71,11 @@ const styles = StyleSheet.create({
   },
   check: {
     color: '#0B1120',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 0.3,
     lineHeight: 16,
+    textTransform: 'uppercase',
   },
   label: {
     color: '#0B1120',

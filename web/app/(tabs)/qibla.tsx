@@ -127,8 +127,8 @@ export default function QiblaScreen() {
     }
   }
 
-  const bearingLabel = qiblaBearing === null ? '—' : `${qiblaBearing.toFixed(1)}°`;
-  const headingLabel = deviceHeading === null ? 'Unavailable' : `${deviceHeading.toFixed(1)}°`;
+  const bearingLabel = qiblaBearing === null ? 'Unavailable' : `${qiblaBearing.toFixed(1)} deg`;
+  const headingLabel = deviceHeading === null ? 'Unavailable' : `${deviceHeading.toFixed(1)} deg`;
 
   return (
     <ScrollView
@@ -271,3 +271,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

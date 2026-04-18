@@ -1,16 +1,35 @@
 import { Platform } from 'react-native';
 
-function getDefaultApiUrl() {
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:4000';
+import { createAppConfig as createAppConfigShared, type AppConfig } from './app-config.shared';
+
+function getWebHostName() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') {
+    return null;
   }
 
-  return 'http://localhost:4000';
+  const hostName = window.location.hostname?.trim().toLowerCase();
+  return hostName ? hostName : null;
 }
 
-export const appConfig = {
-  apiUrl: process.env.EXPO_PUBLIC_API_URL?.trim() || getDefaultApiUrl(),
-  buildStage: process.env.EXPO_PUBLIC_APP_STAGE?.trim() || 'development',
-  googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || '',
-  webPushPublicKey: process.env.EXPO_PUBLIC_WEB_PUSH_PUBLIC_KEY?.trim() || '',
-};
+export function createAppConfig(
+  env: Record<string, string | undefined> = process.env,
+  options?: {
+    platform?: string;
+    webHostName?: string | null;
+  },
+): AppConfig {
+  const platform = options?.platform ?? Platform.OS;
+  const webHostName =
+    platform === 'web'
+      ? (options?.webHostName ?? getWebHostName())
+      : null;
+
+  return createAppConfigShared(env, {
+    platform,
+    webHostName,
+  });
+}
+
+export { type AppConfig, isLocalHostName } from './app-config.shared';
+
+export const appConfig = createAppConfig();

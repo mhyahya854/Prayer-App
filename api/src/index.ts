@@ -14,15 +14,17 @@ import {
   getDefaultPrayerPreferences,
   type ApiHealthResponse,
   type PrayerTimesResponse,
+  type RuntimeResponse,
 } from '@prayer-app/core';
 import Fastify, { type FastifyReply } from 'fastify';
 import { Pool } from 'pg';
 import { z } from 'zod';
 
-import { apiConfig, apiConfigValidationErrors, runtimeStatus } from './config';
+import { apiConfig, apiConfigValidationErrors, createRuntimeStatus } from './config';
 import { googleDriveAuthCompleteBodySchema, googleDriveAuthStartBodySchema, googleDriveBackupUpsertBodySchema, googleDriveExportDocumentBodySchema } from './google-drive/schema';
 import { buildRedirectUrl, GoogleDriveService } from './google-drive/service';
 import { createGoogleDriveAuthStore } from './google-drive/store';
+import { ApiMosqueSearchService, MosqueSearchUnavailableError, type MosqueSearchService } from './mosques/service';
 import { createNotificationService, type NotificationService } from './notifications/service';
 import { createNotificationStore } from './notifications/store';
 
@@ -67,6 +69,8 @@ const calculationMethodSchema = z.enum([
   'turkey',
 ]);
 
+const supportedMosqueRadiusOptions = [3, 7, 12, 20] as const;
+
 const prayerPreferencesSchema = z.object({
   adjustments: z.object({
     fajr: z.number().int().min(-30).max(30),
@@ -76,8 +80,23 @@ const prayerPreferencesSchema = z.object({
     maghrib: z.number().int().min(-30).max(30),
     isha: z.number().int().min(-30).max(30),
   }),
+  autoRefreshLocation: z.boolean(),
   calculationMethod: calculationMethodSchema,
+  calculationMode: z.enum(['manual', 'auto']),
   madhab: z.enum(['shafi', 'hanafi']),
+  timeFormat: z.enum(['12h', '24h']),
+});
+
+const mosqueNearbyQuerySchema = z.object({
+  latitude: z.coerce.number().min(-90).max(90),
+  longitude: z.coerce.number().min(-180).max(180),
+  radiusKm: z.coerce
+    .number()
+    .int()
+    .refine(
+      (value) => supportedMosqueRadiusOptions.includes(value as (typeof supportedMosqueRadiusOptions)[number]),
+      'Radius must be one of 3, 7, 12, or 20 km.',
+    ),
 });
 
 const notificationPreferencesSchema = z.object({
@@ -235,6 +254,12 @@ function createDefaultGoogleDriveService() {
   );
 }
 
+function createDefaultMosqueSearchService() {
+  return new ApiMosqueSearchService({
+    googlePlacesApiKey: apiConfig.googlePlacesApiKey,
+  });
+}
+
 function getSessionTokenFromHeaders(headers: Record<string, unknown>) {
   const rawHeader = headers['x-prayer-app-session'];
 
@@ -253,14 +278,22 @@ function getSessionTokenFromHeaders(headers: Record<string, unknown>) {
 export function buildServer(options?: {
   enableNotificationWorker?: boolean;
   googleDriveService?: GoogleDriveService | null;
+  mosqueSearchService?: MosqueSearchService;
   notificationService?: NotificationService | null;
   rateLimit?: Partial<ApiRateLimitConfig>;
+  stage?: RuntimeResponse['stage'];
 }) {
   const app = Fastify({
     logger: true,
   });
+  const effectiveStage = options?.stage ?? apiConfig.stage;
   const notificationService = options?.notificationService ?? createDefaultNotificationService();
   const googleDriveService = options?.googleDriveService ?? createDefaultGoogleDriveService();
+  const mosqueSearchService = options?.mosqueSearchService ?? createDefaultMosqueSearchService();
+  const runtimeStatus = {
+    ...createRuntimeStatus(apiConfig),
+    stage: effectiveStage,
+  };
   const effectiveRateLimit = {
     ...apiRateLimitConfig,
     ...options?.rateLimit,
@@ -275,7 +308,7 @@ export function buildServer(options?: {
 
   void app.register(cors, {
     origin:
-      apiConfig.stage === 'production'
+      effectiveStage === 'production' || effectiveStage === 'staging'
         ? apiConfig.allowedOrigins.length > 0
           ? apiConfig.allowedOrigins
           : false
@@ -321,7 +354,7 @@ export function buildServer(options?: {
     let databaseStatus: ReadinessCheckStatus = 'skipped';
     let webPushStatus: ReadinessCheckStatus = 'skipped';
 
-    const requiresStrictReadiness = apiConfig.stage !== 'development';
+    const requiresStrictReadiness = effectiveStage !== 'development';
 
     if (requiresStrictReadiness) {
       if (!apiConfig.databaseUrl) {
@@ -366,7 +399,13 @@ export function buildServer(options?: {
         global: true,
       });
 
-      api.get('/runtime', async () => runtimeStatus);
+      api.get('/runtime', async (_request, reply) => {
+        if (effectiveStage !== 'development') {
+          return reply.code(404).send();
+        }
+
+        return runtimeStatus;
+      });
 
       api.get('/prayers/today', async (request, reply): Promise<PrayerTimesResponse | void> => {
         const queryResult = prayerQuerySchema.safeParse(request.query);
@@ -409,6 +448,43 @@ export function buildServer(options?: {
           },
           timeZone: query.timeZone,
         });
+      });
+
+      api.get('/mosques/nearby', async (request, reply) => {
+        const queryResult = mosqueNearbyQuerySchema.safeParse(request.query);
+
+        if (!queryResult.success) {
+          sendApiError(
+            reply,
+            400,
+            'invalid_mosque_query',
+            'Invalid mosque search input.',
+            queryResult.error.flatten().fieldErrors,
+          );
+          return;
+        }
+
+        try {
+          return await mosqueSearchService.searchNearby(queryResult.data);
+        } catch (error) {
+          if (error instanceof MosqueSearchUnavailableError) {
+            sendApiError(
+              reply,
+              502,
+              'mosque_search_unavailable',
+              error.message,
+              error.details,
+            );
+            return;
+          }
+
+          sendApiError(
+            reply,
+            502,
+            'mosque_search_unavailable',
+            'Mosque search is temporarily unavailable. Please try again shortly.',
+          );
+        }
       });
 
       api.post('/notifications/web/sync', async (request, reply) => {

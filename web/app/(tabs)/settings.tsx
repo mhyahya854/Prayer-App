@@ -4,8 +4,8 @@ import {
   notifiablePrayerNames,
   notificationPreReminderOptions,
   prayerAdjustmentOptions,
+  resolveCalculationMethodForTimeZone,
 } from '@prayer-app/core';
-import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CollapsibleSection } from '@/src/components/CollapsibleSection';
@@ -29,8 +29,11 @@ export default function SettingsScreen() {
     refreshLocation,
     saveManualLocation,
     savedLocation,
+    setAutoRefreshLocation,
     setCalculationMethod,
+    setCalculationMode,
     setMadhab,
+    setTimeFormat,
   } = usePrayerData();
   const {
     isHydrated: notificationsHydrated,
@@ -54,14 +57,16 @@ export default function SettingsScreen() {
     syncError: driveSyncError,
     syncNow: syncDriveNow,
   } = useGoogleDriveSync();
-  const [use12HourTime, setUse12HourTime] = useState(true);
-  const [autoPilotEnabled, setAutoPilotEnabled] = useState(true);
-  const [autoLocationPermission, setAutoLocationPermission] = useState(true);
-  const [disableBatteryOptimization, setDisableBatteryOptimization] = useState(false);
 
   const allPrayerNotificationsEnabled = notifiablePrayerNames.every(
     (name) => notificationPreferences.enabledPrayers[name],
   );
+  const autoCalculationEnabled = prayerPreferences.calculationMode === 'auto';
+  const use12HourTime = prayerPreferences.timeFormat === '12h';
+  const autoCalculationMethodId = resolveCalculationMethodForTimeZone(savedLocation?.timeZone);
+  const autoCalculationMethodLabel =
+    calculationMethodOptions.find((option) => option.id === autoCalculationMethodId)?.label ??
+    'Muslim World League';
 
   async function setAllPrayerNotifications(enabled: boolean) {
     await Promise.all(notifiablePrayerNames.map((prayerName) => setPrayerEnabled(prayerName, enabled)));
@@ -73,23 +78,18 @@ export default function SettingsScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Hero */}
       <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
         <Text style={[styles.title, { color: palette.text }]}>Settings</Text>
         <Text style={[styles.copy, { color: palette.subtleText }]}>
           Personalize your prayer experience.
         </Text>
-        {/* Subtle sync status line */}
         <View style={styles.syncStatusRow}>
           <Text style={[styles.syncStatusText, { color: palette.subtleText }]}>
-            {'Device · '}
-            <Text style={{ color: palette.subtleText }}>
-              {savedLocation ? savedLocation.label : 'No location'}
-            </Text>
+            Device | <Text>{savedLocation ? savedLocation.label : 'No location'}</Text>
           </Text>
           {hasLoadedSession ? (
             <Text style={[styles.syncStatusText, { color: palette.subtleText }]}>
-              {'Drive · '}
+              Drive |{' '}
               <Text style={{ color: lastSyncedAt ? palette.success : palette.subtleText }}>
                 {lastSyncedAt ? lastSyncedAt : account ? 'not yet synced' : 'not linked'}
               </Text>
@@ -98,7 +98,6 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* Display */}
       <CollapsibleSection
         title="Day, Night or Auto"
         subtitle="Please select from auto, day mode or night mode."
@@ -110,111 +109,147 @@ export default function SettingsScreen() {
         <ThemeAccentSelector value={accentTheme} onChange={setAccentTheme} />
       </CollapsibleSection>
 
-      {/* Prayer Time Calculation */}
-      <CollapsibleSection title="Prayer Times" subtitle="How your prayer times should be calculated" defaultExpanded collapsible={false}>
+      <CollapsibleSection
+        title="Prayer Times"
+        subtitle="How your prayer times should be calculated"
+        defaultExpanded
+        collapsible={false}
+      >
         <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.toggleCopy}>
             <Text style={[styles.toggleTitle, { color: palette.text }]}>12-Hour Time</Text>
-            <Text style={[styles.toggleBody, { color: palette.subtleText }]}>Display prayer times in 12-hour format.</Text>
+            <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
+              Display prayer times in 12-hour format.
+            </Text>
           </View>
           <Pressable
+            data-testid="settings-time-format-toggle"
+            testID="settings-time-format-toggle"
+            accessibilityLabel="Toggle 12-hour time"
             accessibilityRole="switch"
             accessibilityState={{ checked: use12HourTime }}
-            onPress={() => setUse12HourTime((value) => !value)}
+            onPress={() => void setTimeFormat(use12HourTime ? '24h' : '12h')}
             style={[
               styles.togglePill,
               { backgroundColor: use12HourTime ? palette.accentSoft : palette.border },
             ]}
           >
-            <View style={[styles.toggleThumb, { alignSelf: use12HourTime ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
+            <View
+              style={[
+                styles.toggleThumb,
+                {
+                  alignSelf: use12HourTime ? 'flex-end' : 'flex-start',
+                  backgroundColor: palette.accent,
+                },
+              ]}
+            />
           </Pressable>
         </View>
 
         <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.toggleCopy}>
-            <Text style={[styles.toggleTitle, { color: palette.text }]}>Autopilot</Text>
+            <Text style={[styles.toggleTitle, { color: palette.text }]}>Automatic Calculation Method</Text>
             <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
-              Auto-select calculation method from your location and madhab.
+              Choose the prayer calculation method from your saved timezone.
             </Text>
           </View>
           <Pressable
             accessibilityRole="switch"
-            accessibilityState={{ checked: autoPilotEnabled }}
-            onPress={() => setAutoPilotEnabled((value) => !value)}
+            accessibilityState={{ checked: autoCalculationEnabled }}
+            onPress={() => void setCalculationMode(autoCalculationEnabled ? 'manual' : 'auto')}
             style={[
               styles.togglePill,
-              { backgroundColor: autoPilotEnabled ? palette.accentSoft : palette.border },
+              { backgroundColor: autoCalculationEnabled ? palette.accentSoft : palette.border },
             ]}
           >
-            <View style={[styles.toggleThumb, { alignSelf: autoPilotEnabled ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
+            <View
+              style={[
+                styles.toggleThumb,
+                {
+                  alignSelf: autoCalculationEnabled ? 'flex-end' : 'flex-start',
+                  backgroundColor: palette.accent,
+                },
+              ]}
+            />
           </Pressable>
         </View>
 
         <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.toggleCopy}>
-            <Text style={[styles.toggleTitle, { color: palette.text }]}>Automatic Location Permission</Text>
+            <Text style={[styles.toggleTitle, { color: palette.text }]}>Use Browser Location Automatically</Text>
             <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
-              Prompt and keep location permission for auto-detect.
+              Auto-refresh your saved location when the browser allows it.
             </Text>
           </View>
           <Pressable
+            data-testid="settings-auto-location-toggle"
+            testID="settings-auto-location-toggle"
+            accessibilityLabel="Toggle browser auto location"
             accessibilityRole="switch"
-            accessibilityState={{ checked: autoLocationPermission }}
-            onPress={() => setAutoLocationPermission((value) => !value)}
+            accessibilityState={{ checked: prayerPreferences.autoRefreshLocation }}
+            onPress={() => void setAutoRefreshLocation(!prayerPreferences.autoRefreshLocation)}
             style={[
               styles.togglePill,
-              { backgroundColor: autoLocationPermission ? palette.accentSoft : palette.border },
+              {
+                backgroundColor: prayerPreferences.autoRefreshLocation
+                  ? palette.accentSoft
+                  : palette.border,
+              },
             ]}
           >
-            <View style={[styles.toggleThumb, { alignSelf: autoLocationPermission ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
-          </Pressable>
-        </View>
-
-        <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-          <View style={styles.toggleCopy}>
-            <Text style={[styles.toggleTitle, { color: palette.text }]}>Disable Battery Optimization</Text>
-            <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
-              Helps improve background notification reliability.
-            </Text>
-          </View>
-          <Pressable
-            accessibilityRole="switch"
-            accessibilityState={{ checked: disableBatteryOptimization }}
-            onPress={() => setDisableBatteryOptimization((value) => !value)}
-            style={[
-              styles.togglePill,
-              { backgroundColor: disableBatteryOptimization ? palette.accentSoft : palette.border },
-            ]}
-          >
-            <View style={[styles.toggleThumb, { alignSelf: disableBatteryOptimization ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
+            <View
+              style={[
+                styles.toggleThumb,
+                {
+                  alignSelf: prayerPreferences.autoRefreshLocation ? 'flex-end' : 'flex-start',
+                  backgroundColor: palette.accent,
+                },
+              ]}
+            />
           </Pressable>
         </View>
 
         <Text style={[styles.supportText, { color: palette.subtleText }]}>
           Prayer times are based on your selected method and madhab, with optional per-prayer minute adjustments.
         </Text>
+        {autoCalculationEnabled ? (
+          <Text style={[styles.supportText, { color: palette.subtleText }]}>
+            Automatic mode is currently using {autoCalculationMethodLabel} for your saved timezone.
+          </Text>
+        ) : null}
 
         <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Calculation method</Text>
         <View style={styles.optionGrid}>
           {calculationMethodOptions.map((option) => {
-            const isActive = option.id === prayerPreferences.calculationMethod;
+            const isActive = option.id === prayerPreferences.calculationMethod && !autoCalculationEnabled;
             return (
               <Pressable
                 key={option.id}
                 accessibilityRole="button"
-                onPress={() => void setCalculationMethod(option.id)}
+                accessibilityState={{ disabled: autoCalculationEnabled }}
+                onPress={() => {
+                  if (!autoCalculationEnabled) {
+                    void setCalculationMethod(option.id);
+                  }
+                }}
                 style={[
                   styles.optionCard,
                   {
                     backgroundColor: isActive ? palette.accentSoft : palette.surface,
                     borderColor: isActive ? palette.accent : palette.border,
+                    opacity: autoCalculationEnabled ? 0.6 : 1,
                   },
                 ]}
               >
                 <Text style={[styles.optionTitle, { color: isActive ? palette.accent : palette.text }]}>
                   {option.label}
                 </Text>
-                <Text style={[styles.optionDescription, { color: isActive ? palette.accent : palette.subtleText }]}>
+                <Text
+                  style={[
+                    styles.optionDescription,
+                    { color: isActive ? palette.accent : palette.subtleText },
+                  ]}
+                >
                   {option.description}
                 </Text>
               </Pressable>
@@ -242,7 +277,12 @@ export default function SettingsScreen() {
                 <Text style={[styles.optionTitle, { color: isActive ? palette.accent : palette.text }]}>
                   {option.label}
                 </Text>
-                <Text style={[styles.optionDescription, { color: isActive ? palette.accent : palette.subtleText }]}>
+                <Text
+                  style={[
+                    styles.optionDescription,
+                    { color: isActive ? palette.accent : palette.subtleText },
+                  ]}
+                >
                   {option.description}
                 </Text>
               </Pressable>
@@ -251,8 +291,12 @@ export default function SettingsScreen() {
         </View>
       </CollapsibleSection>
 
-      {/* Fine-Tune Times */}
-      <CollapsibleSection title="Fine-Tune Times" subtitle="Adjust individual prayers by minutes" defaultExpanded collapsible={false}>
+      <CollapsibleSection
+        title="Fine-Tune Times"
+        subtitle="Adjust individual prayers by minutes"
+        defaultExpanded
+        collapsible={false}
+      >
         {prayerAdjustmentOptions.map((adjustment) => (
           <View key={adjustment.key} style={[styles.adjustmentRow, { borderBottomColor: palette.border }]}>
             <View style={styles.adjustmentCopy}>
@@ -267,7 +311,7 @@ export default function SettingsScreen() {
                 onPress={() => void adjustPrayerOffset(adjustment.key, -1)}
                 style={[styles.adjustmentButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
               >
-                <Text style={[styles.adjustmentButtonLabel, { color: palette.text }]}>−1</Text>
+                <Text style={[styles.adjustmentButtonLabel, { color: palette.text }]}>-1</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -281,8 +325,12 @@ export default function SettingsScreen() {
         ))}
       </CollapsibleSection>
 
-      {/* Your Location */}
-      <CollapsibleSection title="Your Location" subtitle="Prayer times follow the saved location" defaultExpanded collapsible={false}>
+      <CollapsibleSection
+        title="Your Location"
+        subtitle="Prayer times follow the saved location"
+        defaultExpanded
+        collapsible={false}
+      >
         <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
           <View style={styles.infoCopy}>
             <Text style={[styles.infoTitle, { color: palette.text }]}>Saved location</Text>
@@ -313,7 +361,7 @@ export default function SettingsScreen() {
           style={[styles.actionButton, { backgroundColor: palette.accent }]}
         >
           <Text style={[styles.actionButtonLabel, { color: palette.background }]}>
-            {isRefreshingLocation ? 'Refreshing\u2026' : 'Use current location'}
+            {isRefreshingLocation ? 'Refreshing...' : 'Use current location'}
           </Text>
         </Pressable>
         <ManualLocationForm
@@ -335,7 +383,7 @@ export default function SettingsScreen() {
         />
         {savedLocation?.timeZoneSource === 'device-fallback' ? (
           <Text style={[styles.supportText, { color: palette.subtleText }]}>
-            Using your device timezone as a fallback — coordinate lookup was unavailable.
+            Using your device timezone as a fallback - coordinate lookup was unavailable.
           </Text>
         ) : null}
         {locationError ? (
@@ -343,14 +391,12 @@ export default function SettingsScreen() {
         ) : null}
       </CollapsibleSection>
 
-      {/* Prayer Reminders */}
       <CollapsibleSection
         title="Notifications"
         subtitle="Please select which types of notifications you would like to receive."
         defaultExpanded
         collapsible={false}
       >
-        {/* Permission state — shown only if not yet granted */}
         {notificationsHydrated && permissionState !== 'granted' ? (
           <Pressable
             accessibilityRole="button"
@@ -365,7 +411,7 @@ export default function SettingsScreen() {
         {notificationsHydrated && permissionState === 'granted' ? (
           <View style={[styles.permissionGranted, { borderColor: palette.successSoft }]}>
             <Text style={[styles.permissionGrantedText, { color: palette.subtleText }]}>
-              {'✓ Notifications are enabled'}
+              Notifications are enabled.
             </Text>
           </View>
         ) : null}
@@ -391,30 +437,20 @@ export default function SettingsScreen() {
                 onPress={() => void setAllPrayerNotifications(!allPrayerNotificationsEnabled)}
                 style={[
                   styles.togglePill,
-                  { backgroundColor: allPrayerNotificationsEnabled ? palette.accentSoft : palette.border },
+                  {
+                    backgroundColor: allPrayerNotificationsEnabled ? palette.accentSoft : palette.border,
+                  },
                 ]}
               >
-                <View style={[styles.toggleThumb, { alignSelf: allPrayerNotificationsEnabled ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
-              </Pressable>
-            </View>
-
-            <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <View style={styles.toggleCopy}>
-                <Text style={[styles.toggleTitle, { color: palette.text }]}>Disable Battery Optimization</Text>
-                <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
-                  Follow phone guidance so prayer alerts are delivered on time.
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="switch"
-                accessibilityState={{ checked: disableBatteryOptimization }}
-                onPress={() => setDisableBatteryOptimization((value) => !value)}
-                style={[
-                  styles.togglePill,
-                  { backgroundColor: disableBatteryOptimization ? palette.accentSoft : palette.border },
-                ]}
-              >
-                <View style={[styles.toggleThumb, { alignSelf: disableBatteryOptimization ? 'flex-end' : 'flex-start', backgroundColor: palette.accent }]} />
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      alignSelf: allPrayerNotificationsEnabled ? 'flex-end' : 'flex-start',
+                      backgroundColor: palette.accent,
+                    },
+                  ]}
+                />
               </Pressable>
             </View>
           </View>
@@ -426,7 +462,7 @@ export default function SettingsScreen() {
             ]}
           >
             <Text style={[styles.supportText, { color: palette.subtleText }]}>
-              Individual prayer alerts are now controlled on the Home prayer list using the bell icon next to each prayer.
+              Individual prayer alerts are controlled on the Home prayer list using the alert button next to each prayer.
             </Text>
             <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Reminder lead time</Text>
             <View style={styles.optionGrid}>
@@ -448,7 +484,12 @@ export default function SettingsScreen() {
                     <Text style={[styles.optionTitle, { color: isActive ? palette.accent : palette.text }]}>
                       {option.label}
                     </Text>
-                    <Text style={[styles.optionDescription, { color: isActive ? palette.accent : palette.subtleText }]}>
+                    <Text
+                      style={[
+                        styles.optionDescription,
+                        { color: isActive ? palette.accent : palette.subtleText },
+                      ]}
+                    >
                       {option.value ? 'Reminder before prayer' : 'Alert at prayer time only'}
                     </Text>
                   </Pressable>
@@ -464,15 +505,20 @@ export default function SettingsScreen() {
           style={[styles.secondaryButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
         >
           <Text style={[styles.secondaryButtonLabel, { color: palette.text }]}>
-            {isSyncingNotifications ? 'Refreshing\u2026' : 'Refresh schedules'}
+            {isSyncingNotifications ? 'Refreshing...' : 'Refresh schedules'}
           </Text>
         </Pressable>
         {syncError ? (
           <Text style={[styles.supportText, { color: palette.danger }]}>{syncError}</Text>
         ) : null}
       </CollapsibleSection>
-      {/* Backup & Sync */}
-      <CollapsibleSection title="Backup &amp; Sync" subtitle="Google Drive backup and restore" defaultExpanded collapsible={false}>
+
+      <CollapsibleSection
+        title="Backup &amp; Sync"
+        subtitle="Google Drive backup and restore"
+        defaultExpanded
+        collapsible={false}
+      >
         <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
           <View style={styles.infoCopy}>
             <Text style={[styles.infoTitle, { color: palette.text }]}>Google account</Text>
@@ -518,8 +564,8 @@ export default function SettingsScreen() {
         >
           <Text style={[styles.actionButtonLabel, { color: palette.background }]}>
             {account
-              ? isSyncingDrive ? 'Syncing…' : 'Sync now'
-              : isConnecting ? 'Connecting…' : 'Connect Google Drive'}
+              ? isSyncingDrive ? 'Syncing...' : 'Sync now'
+              : isConnecting ? 'Connecting...' : 'Connect Google Drive'}
           </Text>
         </Pressable>
 

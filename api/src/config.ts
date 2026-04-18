@@ -9,6 +9,7 @@ export interface ApiConfig {
   databaseUrl: string;
   googleClientId: string;
   googleClientSecret: string;
+  googlePlacesApiKey: string;
   googleRedirectUri: string;
   host: string;
   notificationWorkerIntervalMs: number;
@@ -55,6 +56,7 @@ export function createApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig
     stage: normalizeStage(rawStage ?? undefined),
     googleClientId: env.GOOGLE_CLIENT_ID ?? '',
     googleClientSecret: env.GOOGLE_CLIENT_SECRET ?? '',
+    googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY ?? '',
     googleRedirectUri: env.GOOGLE_REDIRECT_URI ?? '',
     databaseUrl: env.DATABASE_URL ?? '',
     notificationWorkerIntervalMs: parseWorkerInterval(env.NOTIFICATION_WORKER_INTERVAL_MS),
@@ -136,12 +138,16 @@ export const apiConfigValidationErrors = [
   ...getApiConfigValidationErrors(apiConfig),
 ];
 
-export const runtimeStatus: RuntimeResponse = {
-  authFlowImplemented: true,
-  calendarSyncImplemented: false,
-  driveBackupImplemented: true,
-  googleServerCredentialsConfigured: Boolean(
-    apiConfig.googleClientId && apiConfig.googleClientSecret && apiConfig.googleRedirectUri,
-  ),
-  stage: apiConfig.stage,
-};
+export function createRuntimeStatus(config: ApiConfig): RuntimeResponse {
+  return {
+    authFlowImplemented: true,
+    calendarSyncImplemented: false,
+    driveBackupImplemented: true,
+    googleServerCredentialsConfigured: Boolean(
+      config.googleClientId && config.googleClientSecret && config.googleRedirectUri,
+    ),
+    stage: config.stage,
+  };
+}
+
+export const runtimeStatus = createRuntimeStatus(apiConfig);

@@ -22,12 +22,12 @@ export const appOverview: AppOverview = {
 };
 
 export const todayPrayerSchedule: PrayerTime[] = [
-  { name: 'Fajr', time: '6:04 AM', window: 'Ends 7:21 AM' },
-  { name: 'Sunrise', time: '7:21 AM', window: 'Morning dhikr after sunrise' },
-  { name: 'Dhuhr', time: '1:21 PM', window: 'Ends 4:47 PM' },
-  { name: 'Asr', time: '4:48 PM', window: 'Next prayer', isNext: true },
-  { name: 'Maghrib', time: '7:27 PM', window: 'Iftar reminder available' },
-  { name: 'Isha', time: '8:39 PM', window: 'Night recitation and witr' },
+  { isoTime: '2026-03-23T22:04:00.000Z', name: 'Fajr', time: '6:04 AM', window: 'Ends 7:21 AM' },
+  { isoTime: '2026-03-23T23:21:00.000Z', name: 'Sunrise', time: '7:21 AM', window: 'Morning dhikr after sunrise' },
+  { isoTime: '2026-03-24T05:21:00.000Z', name: 'Dhuhr', time: '1:21 PM', window: 'Ends 4:47 PM' },
+  { isoTime: '2026-03-24T08:48:00.000Z', name: 'Asr', time: '4:48 PM', window: 'Next prayer', isNext: true },
+  { isoTime: '2026-03-24T11:27:00.000Z', name: 'Maghrib', time: '7:27 PM', window: 'Iftar reminder available' },
+  { isoTime: '2026-03-24T12:39:00.000Z', name: 'Isha', time: '8:39 PM', window: 'Night recitation and witr' },
 ];
 
 export const coreModules: CoreModule[] = [

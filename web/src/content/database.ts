@@ -6,7 +6,6 @@ import type {
   DuaCategorySummary,
   DuaHomeSnapshot,
   DuaItem,
-  QuranBookmark,
   QuranChapterDetail,
   QuranChapterSummary,
   QuranHomeSnapshot,

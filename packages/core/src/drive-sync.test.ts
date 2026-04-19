@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   createPrayerAppBackupPayload,
   createTimestampedValue,
+  getDefaultThemeAccent,
   mergePrayerAppBackupPayload,
   mergePrayerLogStores,
   mergeTimestampedValue,
@@ -67,6 +68,7 @@ test('mergePrayerAppBackupPayload orchestrates a deep merge of app state', () =>
     prayerLogs: createTimestampedValue({}, t1),
     prayerPreferences: createTimestampedValue(getDefaultPrayerPreferences(), t1),
     savedLocation: createTimestampedValue(null, t1),
+    themeAccent: createTimestampedValue(getDefaultThemeAccent(), t1),
     themePreference: createTimestampedValue('system', t1),
     version: 1,
   };
@@ -78,12 +80,14 @@ test('mergePrayerAppBackupPayload orchestrates a deep merge of app state', () =>
 
   const remote = {
     ...baseBackup,
+    themeAccent: createTimestampedValue('gold' as const, t2),
     prayerPreferences: createTimestampedValue({ ...getDefaultPrayerPreferences(), timeFormat: '24h' as const }, t2),
   };
 
   const merged = mergePrayerAppBackupPayload(local, remote);
 
   assert.equal(merged.themePreference.value, 'dark');
+  assert.equal(merged.themeAccent.value, 'gold');
   assert.equal(merged.prayerPreferences.value.timeFormat, '24h');
   assert.equal(merged.exportedAt, t2);
 });

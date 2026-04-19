@@ -62,15 +62,17 @@ void Promise.resolve(preload(reminderSoundSource)).catch((error) => {
   return undefined;
 });
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    priority: Notifications.AndroidNotificationPriority.MAX,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      priority: Notifications.AndroidNotificationPriority.MAX,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 type NotificationCapability = 'local' | 'unsupported' | 'web-push';
 

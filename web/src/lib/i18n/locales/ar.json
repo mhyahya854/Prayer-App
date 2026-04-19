@@ -1,0 +1,32 @@
+{
+  "common": {
+    "active": "نشط",
+    "apply_theme": "تطبيق لون التطبيق هذا",
+    "back": "رجوع",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "error": "خطأ",
+    "loading": "جار التحميل...",
+    "retry": "إعادة المحاولة",
+    "save": "حفظ",
+    "success": "نجاح"
+  },
+  "theme": {
+    "accent_selector_label": "لون {{label}}",
+    "accent_default": "افتراضي",
+    "accent_gold": "ذهبي",
+    "accent_emerald": "زمردي",
+    "accent_rose": "وردي",
+    "accent_sky": "سماوي",
+    "accent_violet": "بنفسجي"
+  },
+  "prayer": {
+    "times": "مواقيت الصلاة",
+    "fajr": "الفجر",
+    "sunrise": "الشروق",
+    "dhuhr": "الظهر",
+    "asr": "العصر",
+    "maghrib": "المغرب",
+    "isha": "العشاء"
+  }
+}

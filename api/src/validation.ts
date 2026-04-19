@@ -80,6 +80,9 @@ export const prayerAppBackupPayloadSchema = z.object({
   prayerLogs: createTimestampedValueSchema(prayerLogStoreSchema),
   prayerPreferences: createTimestampedValueSchema(prayerPreferencesSchema),
   savedLocation: createTimestampedValueSchema(savedLocationSchema.nullable()),
+  themeAccent: createTimestampedValueSchema(
+    z.enum(['default', 'gold', 'emerald', 'rose', 'sky', 'violet']),
+  ),
   themePreference: createTimestampedValueSchema(z.enum(['system', 'light', 'dark'])),
   version: z.number().int().min(1),
 });

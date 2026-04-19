@@ -6,6 +6,7 @@ import {
   prayerAdjustmentOptions,
   resolveCalculationMethodForTimeZone,
 } from '@prayer-app/core';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CollapsibleSection } from '@/src/components/CollapsibleSection';
@@ -19,6 +20,7 @@ import { useAppPalette } from '@/src/theme/palette';
 import { useThemePreference } from '@/src/theme/theme-provider';
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const palette = useAppPalette();
   const { accentTheme, setAccentTheme, setThemePreference, themePreference } = useThemePreference();
   const {
@@ -79,19 +81,19 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
-        <Text style={[styles.title, { color: palette.text }]}>Settings</Text>
+        <Text style={[styles.title, { color: palette.text }]}>{t('settings.hero_title')}</Text>
         <Text style={[styles.copy, { color: palette.subtleText }]}>
-          Personalize your prayer experience.
+          {t('settings.hero_subtitle')}
         </Text>
         <View style={styles.syncStatusRow}>
           <Text style={[styles.syncStatusText, { color: palette.subtleText }]}>
-            Device | <Text>{savedLocation ? savedLocation.label : 'No location'}</Text>
+            {t('settings.device_location')} | <Text>{savedLocation ? savedLocation.label : t('settings.no_location')}</Text>
           </Text>
           {hasLoadedSession ? (
             <Text style={[styles.syncStatusText, { color: palette.subtleText }]}>
-              Drive |{' '}
+              {t('settings.drive_sync')} |{' '}
               <Text style={{ color: lastSyncedAt ? palette.success : palette.subtleText }}>
-                {lastSyncedAt ? lastSyncedAt : account ? 'not yet synced' : 'not linked'}
+                {lastSyncedAt ? lastSyncedAt : account ? t('settings.sync_not_yet') : t('settings.sync_not_linked')}
               </Text>
             </Text>
           ) : null}
@@ -99,27 +101,27 @@ export default function SettingsScreen() {
       </View>
 
       <CollapsibleSection
-        title="Day, Night or Auto"
-        subtitle="Please select from auto, day mode or night mode."
+        title={t('settings.theme_title')}
+        subtitle={t('settings.theme_subtitle')}
         defaultExpanded
         collapsible={false}
       >
         <ThemeModeSelector value={themePreference} onChange={setThemePreference} />
-        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>App color</Text>
+        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>{t('settings.app_color')}</Text>
         <ThemeAccentSelector value={accentTheme} onChange={setAccentTheme} />
       </CollapsibleSection>
 
       <CollapsibleSection
-        title="Prayer Times"
-        subtitle="How your prayer times should be calculated"
+        title={t('settings.prayer_times_title')}
+        subtitle={t('settings.prayer_times_subtitle')}
         defaultExpanded
         collapsible={false}
       >
         <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.toggleCopy}>
-            <Text style={[styles.toggleTitle, { color: palette.text }]}>12-Hour Time</Text>
+            <Text style={[styles.toggleTitle, { color: palette.text }]}>{t('settings.time_format_12h')}</Text>
             <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
-              Display prayer times in 12-hour format.
+              {t('settings.time_format_12h_body')}
             </Text>
           </View>
           <Pressable
@@ -148,9 +150,9 @@ export default function SettingsScreen() {
 
         <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.toggleCopy}>
-            <Text style={[styles.toggleTitle, { color: palette.text }]}>Automatic Calculation Method</Text>
+            <Text style={[styles.toggleTitle, { color: palette.text }]}>{t('settings.auto_method')}</Text>
             <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
-              Choose the prayer calculation method from your saved timezone.
+              {t('settings.auto_method_body')}
             </Text>
           </View>
           <Pressable
@@ -176,9 +178,9 @@ export default function SettingsScreen() {
 
         <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <View style={styles.toggleCopy}>
-            <Text style={[styles.toggleTitle, { color: palette.text }]}>Use Browser Location Automatically</Text>
+            <Text style={[styles.toggleTitle, { color: palette.text }]}>{t('settings.auto_location')}</Text>
             <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
-              Auto-refresh your saved location when the browser allows it.
+              {t('settings.auto_location_body')}
             </Text>
           </View>
           <Pressable
@@ -210,15 +212,15 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={[styles.supportText, { color: palette.subtleText }]}>
-          Prayer times are based on your selected method and madhab, with optional per-prayer minute adjustments.
+          {t('settings.method_support')}
         </Text>
         {autoCalculationEnabled ? (
           <Text style={[styles.supportText, { color: palette.subtleText }]}>
-            Automatic mode is currently using {autoCalculationMethodLabel} for your saved timezone.
+            {t('settings.auto_mode_support', { method: autoCalculationMethodLabel })}
           </Text>
         ) : null}
 
-        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Calculation method</Text>
+        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>{t('settings.calc_method_label')}</Text>
         <View style={styles.optionGrid}>
           {calculationMethodOptions.map((option) => {
             const isActive = option.id === prayerPreferences.calculationMethod && !autoCalculationEnabled;
@@ -257,7 +259,7 @@ export default function SettingsScreen() {
           })}
         </View>
 
-        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Madhab for Asr</Text>
+        <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>{t('settings.madhab_label')}</Text>
         <View style={styles.optionGrid}>
           {madhabOptions.map((option) => {
             const isActive = option.id === prayerPreferences.madhab;
@@ -292,15 +294,15 @@ export default function SettingsScreen() {
       </CollapsibleSection>
 
       <CollapsibleSection
-        title="Fine-Tune Times"
-        subtitle="Adjust individual prayers by minutes"
+        title={t('settings.fine_tune_title')}
+        subtitle={t('settings.fine_tune_subtitle')}
         defaultExpanded
         collapsible={false}
       >
         {prayerAdjustmentOptions.map((adjustment) => (
           <View key={adjustment.key} style={[styles.adjustmentRow, { borderBottomColor: palette.border }]}>
             <View style={styles.adjustmentCopy}>
-              <Text style={[styles.adjustmentLabel, { color: palette.text }]}>{adjustment.label}</Text>
+              <Text style={[styles.adjustmentLabel, { color: palette.text }]}>{t(`prayer.${adjustment.key}`)}</Text>
               <Text style={[styles.adjustmentValue, { color: palette.subtleText }]}>
                 {prayerPreferences.adjustments[adjustment.key]} min
               </Text>
@@ -326,16 +328,16 @@ export default function SettingsScreen() {
       </CollapsibleSection>
 
       <CollapsibleSection
-        title="Your Location"
-        subtitle="Prayer times follow the saved location"
+        title={t('settings.your_location_title')}
+        subtitle={t('settings.your_location_subtitle')}
         defaultExpanded
         collapsible={false}
       >
         <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
           <View style={styles.infoCopy}>
-            <Text style={[styles.infoTitle, { color: palette.text }]}>Saved location</Text>
+            <Text style={[styles.infoTitle, { color: palette.text }]}>{t('settings.saved_location')}</Text>
             <Text style={[styles.infoBody, { color: palette.subtleText }]}>
-              {savedLocation ? savedLocation.label : 'No location saved yet'}
+              {savedLocation ? savedLocation.label : t('settings.no_location_saved')}
             </Text>
           </View>
           {savedLocation?.source ? (
@@ -346,13 +348,13 @@ export default function SettingsScreen() {
         </View>
         <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
           <View style={styles.infoCopy}>
-            <Text style={[styles.infoTitle, { color: palette.text }]}>Local timezone</Text>
+            <Text style={[styles.infoTitle, { color: palette.text }]}>{t('settings.local_timezone')}</Text>
             <Text style={[styles.infoBody, { color: palette.subtleText }]}>
-              Used to calculate your daily prayer schedule.
+              {t('settings.timezone_body')}
             </Text>
           </View>
           <Text style={[styles.infoValue, { color: palette.text }]}>
-            {savedLocation?.timeZone ?? 'Device default'}
+            {savedLocation?.timeZone ?? t('settings.device_default')}
           </Text>
         </View>
         <Pressable
@@ -361,11 +363,11 @@ export default function SettingsScreen() {
           style={[styles.actionButton, { backgroundColor: palette.accent }]}
         >
           <Text style={[styles.actionButtonLabel, { color: palette.background }]}>
-            {isRefreshingLocation ? 'Refreshing...' : 'Use current location'}
+            {isRefreshingLocation ? t('settings.refreshing') : t('settings.use_current_location')}
           </Text>
         </Pressable>
         <ManualLocationForm
-          helperText="Enter coordinates when location access is unavailable."
+          helperText={t('settings.manual_location_helper')}
           initialValues={
             savedLocation?.source === 'manual'
               ? {
@@ -379,11 +381,11 @@ export default function SettingsScreen() {
           }
           isSubmitting={isRefreshingLocation}
           onSubmit={saveManualLocation}
-          submitLabel={savedLocation?.source === 'manual' ? 'Update location' : 'Save location'}
+          submitLabel={savedLocation?.source === 'manual' ? t('settings.update_location') : t('settings.save_location')}
         />
         {savedLocation?.timeZoneSource === 'device-fallback' ? (
           <Text style={[styles.supportText, { color: palette.subtleText }]}>
-            Using your device timezone as a fallback - coordinate lookup was unavailable.
+            {t('settings.device_fallback_support')}
           </Text>
         ) : null}
         {locationError ? (
@@ -392,8 +394,8 @@ export default function SettingsScreen() {
       </CollapsibleSection>
 
       <CollapsibleSection
-        title="Notifications"
-        subtitle="Please select which types of notifications you would like to receive."
+        title={t('settings.notifications_title')}
+        subtitle={t('settings.notifications_subtitle')}
         defaultExpanded
         collapsible={false}
       >
@@ -404,14 +406,14 @@ export default function SettingsScreen() {
             style={[styles.actionButton, { backgroundColor: palette.accent }]}
           >
             <Text style={[styles.actionButtonLabel, { color: palette.background }]}>
-              Enable notifications
+              {t('settings.enable_notifications')}
             </Text>
           </Pressable>
         ) : null}
         {notificationsHydrated && permissionState === 'granted' ? (
           <View style={[styles.permissionGranted, { borderColor: palette.successSoft }]}>
             <Text style={[styles.permissionGrantedText, { color: palette.subtleText }]}>
-              Notifications are enabled.
+              {t('settings.notifications_enabled_msg')}
             </Text>
           </View>
         ) : null}
@@ -426,9 +428,9 @@ export default function SettingsScreen() {
           >
             <View style={[styles.toggleRow, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={styles.toggleCopy}>
-                <Text style={[styles.toggleTitle, { color: palette.text }]}>Prayer Times</Text>
+                <Text style={[styles.toggleTitle, { color: palette.text }]}>{t('settings.prayer_times_title')}</Text>
                 <Text style={[styles.toggleBody, { color: palette.subtleText }]}>
-                  Enable alerts for all prayers at once.
+                  {t('settings.alert_all_prayers')}
                 </Text>
               </View>
               <Pressable
@@ -462,9 +464,9 @@ export default function SettingsScreen() {
             ]}
           >
             <Text style={[styles.supportText, { color: palette.subtleText }]}>
-              Individual prayer alerts are controlled on the Home prayer list using the alert button next to each prayer.
+              {t('settings.individual_alert_support')}
             </Text>
-            <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Reminder lead time</Text>
+            <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>{t('settings.reminder_lead_time')}</Text>
             <View style={styles.optionGrid}>
               {notificationPreReminderOptions.map((option) => {
                 const isActive = option.value === notificationPreferences.preReminderMinutes;
@@ -490,7 +492,7 @@ export default function SettingsScreen() {
                         { color: isActive ? palette.accent : palette.subtleText },
                       ]}
                     >
-                      {option.value ? 'Reminder before prayer' : 'Alert at prayer time only'}
+                      {option.value ? t('settings.reminder_before') : t('settings.reminder_none')}
                     </Text>
                   </Pressable>
                 );
@@ -505,7 +507,7 @@ export default function SettingsScreen() {
           style={[styles.secondaryButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
         >
           <Text style={[styles.secondaryButtonLabel, { color: palette.text }]}>
-            {isSyncingNotifications ? 'Refreshing...' : 'Refresh schedules'}
+            {isSyncingNotifications ? t('settings.refreshing') : t('settings.refresh_schedules')}
           </Text>
         </Pressable>
         {syncError ? (
@@ -514,24 +516,24 @@ export default function SettingsScreen() {
       </CollapsibleSection>
 
       <CollapsibleSection
-        title="Backup &amp; Sync"
-        subtitle="Google Drive backup and restore"
+        title={t('settings.backup_sync_title')}
+        subtitle={t('settings.backup_sync_subtitle')}
         defaultExpanded
         collapsible={false}
       >
         <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
           <View style={styles.infoCopy}>
-            <Text style={[styles.infoTitle, { color: palette.text }]}>Google account</Text>
+            <Text style={[styles.infoTitle, { color: palette.text }]}>{t('settings.google_account')}</Text>
             <Text style={[styles.infoBody, { color: palette.subtleText }]}>
               {account
-                ? 'Prayer history syncs automatically to your Drive app-data folder.'
-                : 'Sign in to back up and restore your data across devices.'}
+                ? t('settings.google_account_linked_body')
+                : t('settings.google_account_unlinked_body')}
             </Text>
           </View>
           {hasLoadedSession ? (
             <View style={[styles.badge, { backgroundColor: account ? palette.successSoft : palette.accentSoft }]}>
               <Text style={[styles.badgeText, { color: account ? palette.success : palette.subtleText }]}>
-                {account ? 'linked' : 'not linked'}
+                {account ? t('settings.linked_status') : t('settings.unlinked_status')}
               </Text>
             </View>
           ) : null}
@@ -540,7 +542,7 @@ export default function SettingsScreen() {
         {account ? (
           <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
             <View style={styles.infoCopy}>
-              <Text style={[styles.infoTitle, { color: palette.text }]}>Account</Text>
+              <Text style={[styles.infoTitle, { color: palette.text }]}>{t('settings.account_label')}</Text>
             </View>
             <Text style={[styles.infoValue, { color: palette.subtleText }]} numberOfLines={1}>
               {account.email}
@@ -551,7 +553,7 @@ export default function SettingsScreen() {
         {lastSyncedAt ? (
           <View style={[styles.infoRow, { borderBottomColor: palette.border }]}>
             <View style={styles.infoCopy}>
-              <Text style={[styles.infoTitle, { color: palette.text }]}>Last Drive sync</Text>
+              <Text style={[styles.infoTitle, { color: palette.text }]}>{t('settings.last_drive_sync')}</Text>
             </View>
             <Text style={[styles.infoValue, { color: palette.subtleText }]}>{lastSyncedAt}</Text>
           </View>
@@ -564,8 +566,8 @@ export default function SettingsScreen() {
         >
           <Text style={[styles.actionButtonLabel, { color: palette.background }]}>
             {account
-              ? isSyncingDrive ? 'Syncing...' : 'Sync now'
-              : isConnecting ? 'Connecting...' : 'Connect Google Drive'}
+              ? isSyncingDrive ? t('settings.refreshing') : t('settings.sync_now')
+              : isConnecting ? t('settings.connecting') : t('settings.connect_drive')}
           </Text>
         </Pressable>
 
@@ -576,7 +578,7 @@ export default function SettingsScreen() {
             style={[styles.secondaryButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
           >
             <Text style={[styles.secondaryButtonLabel, { color: palette.subtleText }]}>
-              Disconnect Drive
+              {t('settings.disconnect_drive')}
             </Text>
           </Pressable>
         ) : null}

@@ -22,6 +22,7 @@ const googleUserInfoUrl = 'https://openidconnect.googleapis.com/v1/userinfo';
 const driveApiBaseUrl = 'https://www.googleapis.com/drive/v3/files';
 const driveUploadBaseUrl = 'https://www.googleapis.com/upload/drive/v3/files';
 const googleDriveScope = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file';
+const googleCalendarScope = 'https://www.googleapis.com/auth/calendar.events';
 const googleIdentityScopes = ['openid', 'email', 'profile'];
 const backupFileName = 'prayer-app-backup.json';
 const authStateLifetimeMs = 10 * 60_000;
@@ -133,7 +134,7 @@ export class GoogleDriveService {
     authUrl.searchParams.set('prompt', 'consent');
     authUrl.searchParams.set('redirect_uri', this.config.redirectUri);
     authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('scope', [...googleIdentityScopes, googleDriveScope].join(' '));
+    authUrl.searchParams.set('scope', [...googleIdentityScopes, googleDriveScope, googleCalendarScope].join(' '));
     authUrl.searchParams.set('state', state);
 
     return {

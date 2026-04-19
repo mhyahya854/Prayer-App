@@ -88,7 +88,7 @@ test('invalid prayer query returns a stable 400 error envelope', async (t) => {
   assert.ok(payload.error.details.latitude);
 });
 
-test('unimplemented routes return the shared 501 error envelope', async (t) => {
+test('overview and featured content endpoints return successful data', async (t) => {
   const app = buildServer({
     notificationService: createNotificationServiceStub(),
   });
@@ -96,15 +96,19 @@ test('unimplemented routes return the shared 501 error envelope', async (t) => {
     await app.close();
   });
 
-  const response = await app.inject({
+  const overviewResponse = await app.inject({
+    method: 'GET',
+    url: '/api/overview',
+  });
+  const quranResponse = await app.inject({
     method: 'GET',
     url: '/api/quran/featured',
   });
-  const payload = response.json();
 
-  assert.equal(response.statusCode, 501);
-  assert.equal(payload.error.code, 'not_implemented');
-  assert.equal(payload.error.message, 'Quran API is not implemented yet.');
+  assert.equal(overviewResponse.statusCode, 200);
+  assert.equal(quranResponse.statusCode, 200);
+  assert.equal(overviewResponse.json().overview.name, 'Prayer App');
+  assert.ok(Array.isArray(quranResponse.json().surahs));
 });
 
 test('api routes are rate limited with the shared error envelope', async (t) => {

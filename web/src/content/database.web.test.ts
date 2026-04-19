@@ -10,7 +10,10 @@ import {
   searchHadith,
   toggleHadithBookmark,
 } from './database.web';
-import { hadithSeedBundle, prayerTopicsSeedBundle } from './seed/data';
+import { getHadithSeedBundle, getPrayerTopicsSeedBundle } from './seed/data';
+
+const hadithSeedBundle = getHadithSeedBundle();
+const prayerTopicsSeedBundle = getPrayerTopicsSeedBundle();
 
 class MemoryStorage {
   private storage = new Map<string, string>();

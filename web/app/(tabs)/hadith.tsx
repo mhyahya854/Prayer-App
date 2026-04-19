@@ -2,6 +2,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { router, type RelativePathString } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { SectionCard } from '@/src/components/SectionCard';
 import { useContentData } from '@/src/content/content-provider';
@@ -9,6 +10,7 @@ import type { HadithHomeSnapshot, HadithItem } from '@/src/content/types';
 import { useAppPalette } from '@/src/theme/palette';
 
 export default function HadithScreen() {
+  const { t } = useTranslation();
   const palette = useAppPalette();
   const isFocused = useIsFocused();
   const { error, getHadithHomeSnapshot, hadithSource, isReady, searchHadith } = useContentData();
@@ -104,7 +106,7 @@ export default function HadithScreen() {
         <View style={styles.loadingState}>
           <ActivityIndicator color={palette.accent} size="large" />
           <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-            Preparing your hadith library
+            {t('hadith.preparing')}
           </Text>
         </View>
       </ScrollView>
@@ -118,17 +120,17 @@ export default function HadithScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
-        <Text style={[styles.title, { color: palette.text }]}>Hadith</Text>
+        <Text style={[styles.title, { color: palette.text }]}>{t('hadith.title')}</Text>
         <Text style={[styles.copy, { color: palette.text }]}>
-          Browse books, search narrations, and save bookmarks.
+          {t('hadith.subtitle')}
         </Text>
       </View>
 
-      <SectionCard title="Search" subtitle="Local hadith index">
+      <SectionCard title={t('quran.search_title')} subtitle={t('hadith.books_subtitle')}>
         <TextInput
-          accessibilityLabel="Search hadith"
+          accessibilityLabel={t('hadith.search_title')}
           onChangeText={setQuery}
-          placeholder="Search narrator, text, or chapter"
+          placeholder={t('hadith.search_placeholder')}
           placeholderTextColor={palette.subtleText}
           style={[
             styles.searchInput,
@@ -141,11 +143,11 @@ export default function HadithScreen() {
           value={query}
         />
         {isSearching ? (
-          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Searching...</Text>
+          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>{t('quran.searching')}</Text>
         ) : null}
         {!isSearching && query.trim() && results.length === 0 ? (
           <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-            No narrations matched your search.
+            {t('hadith.no_narrations')}
           </Text>
         ) : null}
         {results.map((item) => (
@@ -165,22 +167,22 @@ export default function HadithScreen() {
         ))}
       </SectionCard>
 
-      <SectionCard title="Prayer Study" subtitle="Curated hadith tracks">
+      <SectionCard title={t('hadith.prayer_study_title')} subtitle={t('hadith.prayer_study_subtitle')}>
         <Pressable
           accessibilityRole="button"
           onPress={openPrayerStudy}
           style={[styles.topicCard, { borderColor: palette.border, backgroundColor: palette.surface }]}
         >
-          <Text style={[styles.topicTitle, { color: palette.text }]}>Open prayer study</Text>
+          <Text style={[styles.topicTitle, { color: palette.text }]}>{t('hadith.open_prayer_study')}</Text>
           <Text style={[styles.topicCopy, { color: palette.subtleText }]}>
-            Review guided narration collections focused on salah and daily practice.
+            {t('hadith.prayer_study_copy')}
           </Text>
         </Pressable>
       </SectionCard>
 
-      <SectionCard title="Books" subtitle="All local collections">
+      <SectionCard title={t('hadith.books_title')} subtitle={t('hadith.books_subtitle')}>
         {isLoading ? (
-          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Loading books...</Text>
+          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>{t('hadith.loading_books')}</Text>
         ) : (
           homeSnapshot?.books.map((book) => (
             <Pressable
@@ -199,9 +201,9 @@ export default function HadithScreen() {
         )}
       </SectionCard>
 
-      <SectionCard title="Bookmarks" subtitle="Saved on this device">
+      <SectionCard title={t('hadith.bookmarks_title')} subtitle={t('hadith.bookmarks_subtitle')}>
         {isLoading ? (
-          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Loading bookmarks...</Text>
+          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>{t('hadith.loading_books')}</Text>
         ) : homeSnapshot?.bookmarkedItems.length ? (
           homeSnapshot.bookmarkedItems.map((item) => (
             <Pressable
@@ -218,7 +220,7 @@ export default function HadithScreen() {
           ))
         ) : (
           <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-            No bookmarked hadith yet. Save items from a chapter to keep them close.
+            {t('hadith.no_bookmarks')}
           </Text>
         )}
       </SectionCard>

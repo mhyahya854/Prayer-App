@@ -1,28 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
-  getContentSeedVersion,
   getDuaSeedBundle,
   getHadithSeedBundle,
   getPrayerTopicsSeedBundle,
   getQuranSeedBundle,
 } from '@/src/content/seed/data';
 
-let quranChapterMap: Map<number, any> | null = null;
-let duaCategoryMap: Map<string, any> | null = null;
-let duaItemMap: Map<string, any> | null = null;
-let hadithBookMap: Map<string, any> | null = null;
-let hadithEntryMap: Map<string, any> | null = null;
-let duaItemsByCategory: Map<string, any[]> | null = null;
-let hadithChaptersByBook: Map<string, any[]> | null = null;
-let hadithEntriesByBookAndChapter: Map<string, any[]> | null = null;
-let prayerTopicItemsByTopic: Map<string, any[]> | null = null;
-
 import type {
   DuaCategoryDetail,
   DuaCategorySummary,
   DuaHomeSnapshot,
   DuaItem,
+  DuaSeedCategory,
+  DuaSeedItem,
   HadithBook,
   HadithChapter,
   HadithHomeSnapshot,
@@ -35,6 +26,7 @@ import type {
   QuranHomeSnapshot,
   QuranSavedVerse,
   QuranSearchResult,
+  QuranSeedChapter,
   QuranVerse,
 } from '@/src/content/types';
 
@@ -44,21 +36,35 @@ const duaFavoritesStorageKey = 'prayer-app.web.dua-favorites';
 const duaCountersStorageKey = 'prayer-app.web.dua-counters';
 const hadithBookmarksStorageKey = 'prayer-app.web.hadith-bookmarks';
 
-function ensureDataMaps() {
-  if (quranChapterMap) return;
+interface SeedState {
+  quranChapterMap: Map<number, QuranSeedChapter>;
+  duaCategoryMap: Map<string, DuaSeedCategory>;
+  duaItemMap: Map<string, DuaSeedItem>;
+  hadithBookMap: Map<string, HadithBook>;
+  hadithEntryMap: Map<string, Omit<HadithItem, 'isBookmarked'>>;
+  duaItemsByCategory: Map<string, DuaSeedItem[]>;
+  hadithChaptersByBook: Map<string, HadithChapter[]>;
+  hadithEntriesByBookAndChapter: Map<string, Omit<HadithItem, 'isBookmarked'>[]>;
+  prayerTopicItemsByTopic: Map<string, PrayerTopicItem[]>;
+}
+
+let seedState: SeedState | null = null;
+
+function getSeedState(): SeedState {
+  if (seedState) return seedState;
 
   const quranSeedBundle = getQuranSeedBundle();
   const duaSeedBundle = getDuaSeedBundle();
   const hadithSeedBundle = getHadithSeedBundle();
   const prayerTopicsSeedBundle = getPrayerTopicsSeedBundle();
 
-  quranChapterMap = new Map(quranSeedBundle.chapters.map((chapter) => [chapter.id, chapter]));
-  duaCategoryMap = new Map(duaSeedBundle.categories.map((category) => [category.slug, category]));
-  duaItemMap = new Map(duaSeedBundle.items.map((item) => [item.id, item]));
-  hadithBookMap = new Map(hadithSeedBundle.books.map((book) => [book.slug, book]));
-  hadithEntryMap = new Map(hadithSeedBundle.entries.map((entry) => [entry.id, entry]));
+  const quranChapterMap = new Map(quranSeedBundle.chapters.map((chapter) => [chapter.id, chapter]));
+  const duaCategoryMap = new Map(duaSeedBundle.categories.map((category) => [category.slug, category]));
+  const duaItemMap = new Map(duaSeedBundle.items.map((item) => [item.id, item]));
+  const hadithBookMap = new Map(hadithSeedBundle.books.map((book) => [book.slug, book]));
+  const hadithEntryMap = new Map(hadithSeedBundle.entries.map((entry) => [entry.id, entry]));
   
-  duaItemsByCategory = new Map();
+  const duaItemsByCategory = new Map<string, DuaSeedItem[]>();
   for (const category of duaSeedBundle.categories) {
     duaItemsByCategory.set(
       category.slug,
@@ -66,14 +72,14 @@ function ensureDataMaps() {
     );
   }
 
-  hadithChaptersByBook = new Map();
+  const hadithChaptersByBook = new Map<string, HadithChapter[]>();
   for (const chapter of hadithSeedBundle.chapters) {
     const chapters = hadithChaptersByBook.get(chapter.bookSlug) ?? [];
     chapters.push(chapter);
     hadithChaptersByBook.set(chapter.bookSlug, chapters);
   }
 
-  hadithEntriesByBookAndChapter = new Map();
+  const hadithEntriesByBookAndChapter = new Map<string, Omit<HadithItem, 'isBookmarked'>[]>();
   for (const entry of hadithSeedBundle.entries) {
     const key = getHadithChapterKey(entry.bookSlug, entry.chapterId);
     const chapterEntries = hadithEntriesByBookAndChapter.get(key) ?? [];
@@ -81,12 +87,26 @@ function ensureDataMaps() {
     hadithEntriesByBookAndChapter.set(key, chapterEntries);
   }
 
-  prayerTopicItemsByTopic = new Map();
+  const prayerTopicItemsByTopic = new Map<string, PrayerTopicItem[]>();
   for (const item of prayerTopicsSeedBundle.items) {
     const topicItems = prayerTopicItemsByTopic.get(item.topicSlug) ?? [];
     topicItems.push(item);
     prayerTopicItemsByTopic.set(item.topicSlug, topicItems);
   }
+
+  seedState = {
+    quranChapterMap,
+    duaCategoryMap,
+    duaItemMap,
+    hadithBookMap,
+    hadithEntryMap,
+    duaItemsByCategory,
+    hadithChaptersByBook,
+    hadithEntriesByBookAndChapter,
+    prayerTopicItemsByTopic,
+  };
+
+  return seedState;
 }
 
 interface LastReadRecord {
@@ -195,7 +215,7 @@ async function hydrateState() {
 }
 
 function buildQuranChapterSummary(chapterId: number): QuranChapterSummary {
-  const chapter = quranChapterMap.get(chapterId);
+  const chapter = getSeedState().quranChapterMap.get(chapterId);
 
   if (!chapter) {
     throw new Error(`Unknown Quran chapter ${chapterId}.`);
@@ -212,7 +232,7 @@ function buildQuranChapterSummary(chapterId: number): QuranChapterSummary {
 }
 
 function buildQuranSavedVerse(chapterId: number, verseId: number, updatedAt: string): QuranSavedVerse {
-  const chapter = quranChapterMap.get(chapterId);
+  const chapter = getSeedState().quranChapterMap.get(chapterId);
   const verse = chapter?.verses.find((entry) => entry.id === verseId);
 
   if (!chapter || !verse) {
@@ -234,8 +254,8 @@ function buildQuranSavedVerse(chapterId: number, verseId: number, updatedAt: str
 }
 
 function buildDuaItem(itemId: string): DuaItem {
-  const item = duaItemMap.get(itemId);
-  const category = item ? duaCategoryMap.get(item.categorySlug) : null;
+  const item = getSeedState().duaItemMap.get(itemId);
+  const category = item ? getSeedState().duaCategoryMap.get(item.categorySlug) : null;
 
   if (!item || !category) {
     throw new Error(`Unknown dua item ${itemId}.`);
@@ -254,7 +274,7 @@ function buildDuaItem(itemId: string): DuaItem {
 }
 
 function buildHadithItem(itemId: string): HadithItem {
-  const item = hadithEntryMap.get(itemId);
+  const item = getSeedState().hadithEntryMap.get(itemId);
 
   if (!item) {
     throw new Error(`Unknown hadith item ${itemId}.`);
@@ -279,7 +299,7 @@ export function resetContentStateForTests() {
 }
 
 export async function ensureContentDatabase() {
-  ensureDataMaps();
+  getSeedState();
   await hydrateState();
   return null;
 }
@@ -372,7 +392,7 @@ export async function searchQuran(query: string): Promise<QuranSearchResult[]> {
 export async function getQuranChapterDetail(chapterId: number): Promise<QuranChapterDetail | null> {
   await ensureContentDatabase();
 
-  const chapter = quranChapterMap.get(chapterId);
+  const chapter = getSeedState().quranChapterMap.get(chapterId);
 
   if (!chapter) {
     return null;
@@ -442,8 +462,8 @@ export async function getDuaHomeSnapshot(): Promise<DuaHomeSnapshot> {
 export async function getDuaCategoryDetail(categorySlug: string): Promise<DuaCategoryDetail | null> {
   await ensureContentDatabase();
 
-  const category = duaCategoryMap.get(categorySlug);
-  const items = duaItemsByCategory.get(categorySlug);
+  const category = getSeedState().duaCategoryMap.get(categorySlug);
+  const items = getSeedState().duaItemsByCategory.get(categorySlug);
 
   if (!category || !items) {
     return null;
@@ -491,7 +511,7 @@ export async function getHadithHomeSnapshot(): Promise<HadithHomeSnapshot> {
     .sort((left, right) => right[1].localeCompare(left[1]))
     .slice(0, 20)
     .flatMap(([itemId]) => {
-      if (!hadithEntryMap.has(itemId)) {
+      if (!getSeedState().hadithEntryMap.has(itemId)) {
         return [];
       }
 
@@ -511,13 +531,13 @@ export async function getHadithBookDetail(
 ): Promise<{ book: HadithBook; chapters: HadithChapter[] } | null> {
   await ensureContentDatabase();
 
-  const book = hadithBookMap.get(bookSlug);
+  const book = getSeedState().hadithBookMap.get(bookSlug);
 
   if (!book) {
     return null;
   }
 
-  const chapters = hadithChaptersByBook.get(bookSlug) ?? [];
+  const chapters = getSeedState().hadithChaptersByBook.get(bookSlug) ?? [];
 
   return {
     book: { ...book },
@@ -528,7 +548,7 @@ export async function getHadithBookDetail(
 export async function getHadithChapterDetail(bookSlug: string, chapterId: number): Promise<HadithItem[]> {
   await ensureContentDatabase();
 
-  const entries = hadithEntriesByBookAndChapter.get(getHadithChapterKey(bookSlug, chapterId)) ?? [];
+  const entries = getSeedState().hadithEntriesByBookAndChapter.get(getHadithChapterKey(bookSlug, chapterId)) ?? [];
 
   return [...entries].sort(orderHadithEntries).map((item) => buildHadithItem(item.id));
 }
@@ -564,7 +584,7 @@ export async function searchHadith(query: string): Promise<HadithItem[]> {
 export async function toggleHadithBookmark(id: string) {
   await ensureContentDatabase();
 
-  if (!hadithEntryMap.has(id)) {
+  if (!getSeedState().hadithEntryMap.has(id)) {
     throw new Error(`Unknown hadith item ${id}.`);
   }
 
@@ -599,7 +619,7 @@ export async function getHadithByIds(ids: string[]): Promise<HadithItem[]> {
   }
 
   return ids.flatMap((id) => {
-    if (!hadithEntryMap.has(id)) {
+    if (!getSeedState().hadithEntryMap.has(id)) {
       return [];
     }
 

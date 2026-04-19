@@ -1,5 +1,6 @@
 import { Stack, router, type RelativePathString } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
 import { SectionCard } from '@/src/components/SectionCard';
@@ -8,6 +9,7 @@ import type { PrayerTopic } from '@/src/content/types';
 import { useAppPalette } from '@/src/theme/palette';
 
 export default function PrayerStudyIndexScreen() {
+  const { t } = useTranslation();
   const palette = useAppPalette();
   const { getPrayerTopics, isReady } = useContentData();
   const [topics, setTopics] = useState<PrayerTopic[]>([]);
@@ -22,9 +24,9 @@ export default function PrayerStudyIndexScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Prayer Study' }} />
+      <Stack.Screen options={{ title: t('prayer_study.title') }} />
       <ScrollView style={[styles.screen, { backgroundColor: palette.background }]} contentContainerStyle={styles.content}>
-        <SectionCard title="Prayer Study" subtitle="Curated hadith tracks">
+        <SectionCard title={t('prayer_study.title')} subtitle={t('prayer_study.subtitle')}>
           {topics.map((topic) => (
             <Pressable
               key={topic.slug}
@@ -34,7 +36,7 @@ export default function PrayerStudyIndexScreen() {
             >
               <Text style={[styles.title, { color: palette.text }]}>{topic.title}</Text>
               <Text style={[styles.copy, { color: palette.subtleText }]}>{topic.description}</Text>
-              <Text style={[styles.count, { color: palette.subtleText }]}>{topic.itemCount} narrations</Text>
+              <Text style={[styles.count, { color: palette.subtleText }]}>{topic.itemCount} {t('prayer_study.narrations')}</Text>
             </Pressable>
           ))}
         </SectionCard>

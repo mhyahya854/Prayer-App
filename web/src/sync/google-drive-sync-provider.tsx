@@ -20,6 +20,7 @@ import {
   startGoogleDriveAuth,
   upsertGoogleDriveBackup,
   exportGoogleDriveDocument,
+  syncGoogleCalendarEvents,
 } from '@/src/lib/api/client';
 import {
   clearGoogleDriveSessionSnapshot,
@@ -44,6 +45,7 @@ interface GoogleDriveSyncContextValue {
   syncError: string | null;
   syncNow: () => Promise<void>;
   exportDocument: (folderName: string, fileName: string, content: string, mimeType: string) => Promise<{ fileId: string; webViewLink?: string } | null>;
+  syncToCalendar: (events: Array<{ summary: string; start: string; end: string; description?: string }>) => Promise<{ createdCount: number } | null>;
 }
 
 const GoogleDriveSyncContext = createContext<GoogleDriveSyncContextValue | null>(null);
@@ -74,7 +76,10 @@ function isSessionError(message: string) {
 
 export function GoogleDriveSyncProvider({ children }: PropsWithChildren) {
   const {
+    accentTheme,
+    accentThemeUpdatedAt,
     hasLoadedPreference,
+    replaceThemeAccentSnapshot,
     replaceThemePreferenceSnapshot,
     themePreference,
     themePreferenceUpdatedAt,
@@ -119,6 +124,10 @@ export function GoogleDriveSyncProvider({ children }: PropsWithChildren) {
       prayerPreferencesUpdatedAt || syncEpochTimestamp,
     ),
     savedLocation: createTimestampedValue(savedLocation, savedLocationUpdatedAt || syncEpochTimestamp),
+    themeAccent: createTimestampedValue(
+      accentTheme,
+      accentThemeUpdatedAt || syncEpochTimestamp,
+    ),
     themePreference: createTimestampedValue(
       themePreference,
       themePreferenceUpdatedAt || syncEpochTimestamp,
@@ -228,6 +237,7 @@ export function GoogleDriveSyncProvider({ children }: PropsWithChildren) {
         lastUploadedSignatureRef.current = mergedSignature;
 
         await Promise.all([
+          replaceThemeAccentSnapshot(mergedBackup.themeAccent),
           replaceThemePreferenceSnapshot(mergedBackup.themePreference),
           replacePrayerDataSnapshot({
             prayerLogs: mergedBackup.prayerLogs,
@@ -351,6 +361,20 @@ export function GoogleDriveSyncProvider({ children }: PropsWithChildren) {
     }
   }
 
+  async function syncToCalendar(events: Array<{ summary: string; start: string; end: string; description?: string }>) {
+    if (!sessionToken) {
+      return null;
+    }
+
+    try {
+      const response = await syncGoogleCalendarEvents(sessionToken, { events });
+      return response;
+    } catch (error) {
+      setSyncError(getErrorMessage(error));
+      return null;
+    }
+  }
+
   useEffect(() => {
     if (!hasLoadedSession || !sessionToken || !hasHydratedLocalState || hasCompletedInitialSyncRef.current) {
       return;
@@ -409,6 +433,7 @@ export function GoogleDriveSyncProvider({ children }: PropsWithChildren) {
         syncError,
         syncNow,
         exportDocument,
+        syncToCalendar,
       }}
     >
       {children}

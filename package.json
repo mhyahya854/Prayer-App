@@ -32,7 +32,8 @@
         "test:web": "npm run test --workspace @prayer-app/web",
         "typecheck": "node ./scripts/run-root-workspace-task.mjs typecheck",
         "test:api": "npm run test --workspace @prayer-app/api",
-        "web": "npm run web --workspace @prayer-app/web"
+        "web": "npm run web --workspace @prayer-app/web",
+        "build:web": "npm run build --workspace @prayer-app/web"
     },
     "devDependencies": {
         "@playwright/test": "^1.55.0",

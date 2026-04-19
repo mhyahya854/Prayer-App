@@ -1,4 +1,5 @@
 import {
+  getDefaultThemeAccent,
   getDefaultThemePreference,
   type AppThemePreference,
   type TimestampedValue,
@@ -21,6 +22,7 @@ interface ThemePreferenceContextValue {
   accentTheme: ThemeAccent;
   accentThemeUpdatedAt: string;
   hasLoadedPreference: boolean;
+  replaceThemeAccentSnapshot: (snapshot: TimestampedValue<ThemeAccent>) => Promise<void>;
   replaceThemePreferenceSnapshot: (snapshot: TimestampedValue<ThemePreference>) => Promise<void>;
   resolvedTheme: ResolvedTheme;
   setAccentTheme: (nextAccent: ThemeAccent) => Promise<void>;
@@ -35,7 +37,7 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
   const systemColorScheme = useSystemColorScheme();
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(getDefaultThemePreference());
   const [themePreferenceUpdatedAt, setThemePreferenceUpdatedAt] = useState<string>('');
-  const [accentTheme, setAccentThemeState] = useState<ThemeAccent>('default');
+  const [accentTheme, setAccentThemeState] = useState<ThemeAccent>(getDefaultThemeAccent());
   const [accentThemeUpdatedAt, setAccentThemeUpdatedAt] = useState<string>('');
   const [hasLoadedPreference, setHasLoadedPreference] = useState(false);
 
@@ -94,6 +96,12 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
     await saveThemePreference(snapshot.value, snapshot.updatedAt);
   }
 
+  async function replaceThemeAccentSnapshot(snapshot: TimestampedValue<ThemeAccent>) {
+    setAccentThemeState(snapshot.value);
+    setAccentThemeUpdatedAt(snapshot.updatedAt);
+    await saveThemeAccent(snapshot.value, snapshot.updatedAt);
+  }
+
   async function setAccentTheme(nextAccent: ThemeAccent) {
     const updatedAt = new Date().toISOString();
     setAccentThemeState(nextAccent);
@@ -112,6 +120,7 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
         accentTheme,
         accentThemeUpdatedAt,
         hasLoadedPreference,
+        replaceThemeAccentSnapshot,
         replaceThemePreferenceSnapshot,
         resolvedTheme,
         setAccentTheme,

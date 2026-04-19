@@ -1,10 +1,16 @@
 import { StatusBar } from 'expo-status-bar';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { roadmapMilestones } from '@prayer-app/core';
+import type { RoadmapMilestone } from '@prayer-app/core';
 
 import { SectionCard } from '@/src/components/SectionCard';
 import { useAppPalette } from '@/src/theme/palette';
+
+const roadmapMilestones: RoadmapMilestone[] = [
+  { phase: 'Phase 1', objective: 'Reliable daily worship experience' },
+  { phase: 'Phase 2', objective: 'Google integrations and tracking' },
+  { phase: 'Phase 3', objective: 'Advanced notifications and widgets' },
+];
 
 export default function ModalScreen() {
   const palette = useAppPalette();

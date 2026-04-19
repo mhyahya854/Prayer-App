@@ -27,10 +27,10 @@ import {
   toggleQuranBookmark,
 } from '@/src/content/database.web';
 import {
-  duaSeedBundle,
-  hadithSeedBundle,
-  prayerTopicsSeedBundle,
-  quranSeedBundle,
+  getDuaSeedBundle,
+  getHadithSeedBundle,
+  getPrayerTopicsSeedBundle,
+  getQuranSeedBundle,
 } from '@/src/content/seed/data';
 import type {
   DuaCategoryDetail,
@@ -125,10 +125,10 @@ export function ContentDataProvider({ children }: PropsWithChildren) {
         getQuranHomeSnapshot,
         incrementDuaCounter,
         isReady,
-        duaSource: duaSeedBundle.source,
-        hadithSource: hadithSeedBundle.source,
-        prayerTopicsSource: prayerTopicsSeedBundle.source,
-        quranSource: quranSeedBundle.source,
+        duaSource: getDuaSeedBundle().source,
+        hadithSource: getHadithSeedBundle().source,
+        prayerTopicsSource: getPrayerTopicsSeedBundle().source,
+        quranSource: getQuranSeedBundle().source,
         resetDuaCounter,
         searchHadith,
         searchQuran,

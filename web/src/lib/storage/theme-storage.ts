@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   createTimestampedValue,
+  getDefaultThemeAccent,
   getDefaultThemePreference,
   syncEpochTimestamp,
+  type AppThemeAccent,
   type AppThemePreference,
   type TimestampedValue,
 } from '@prayer-app/core';
@@ -10,7 +12,7 @@ import {
 const themePreferenceStorageKey = 'prayer-app.theme-preference';
 const themeAccentStorageKey = 'prayer-app.theme-accent';
 const themeStorageVersion = 1;
-export type ThemeAccent = 'default' | 'gold' | 'emerald' | 'rose' | 'sky' | 'violet';
+export type ThemeAccent = AppThemeAccent;
 
 interface VersionedEnvelope<T> {
   data: T;
@@ -124,7 +126,7 @@ async function readAccentJson() {
 }
 
 function parseThemeAccent(value: unknown): ParsedStorageValue<ThemeAccent> {
-  const fallback = createTimestampedValue<ThemeAccent>('default', syncEpochTimestamp);
+  const fallback = createTimestampedValue<ThemeAccent>(getDefaultThemeAccent(), syncEpochTimestamp);
 
   if (value === null || value === undefined) {
     return {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatPrayerTime, isTrackablePrayerName, type PrayerName } from '@prayer-app/core';
 import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
@@ -126,6 +127,7 @@ function PrayerArc({ currentTimeMinutes, dots, palette, width }: PrayerArcProps)
 }
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const palette = useAppPalette();
   const { width } = useWindowDimensions();
   const [earlyCompletionPrayer, setEarlyCompletionPrayer] = useState<PrayerName | null>(null);
@@ -161,7 +163,7 @@ export default function HomeScreen() {
             tintColor={palette.accent}
           />
           <ActivityIndicator color={palette.accent} size="large" style={{ marginTop: 16 }} />
-          <Text style={[styles.loadingLabel, { color: palette.subtleText }]}>Preparing your prayers</Text>
+          <Text style={[styles.loadingLabel, { color: palette.subtleText }]}>{t('dashboard.preparing')}</Text>
         </View>
       </View>
     );
@@ -180,9 +182,9 @@ export default function HomeScreen() {
             size={52}
             tintColor={palette.accent}
           />
-          <Text style={[styles.noLocTitle, { color: palette.text }]}>Set your location</Text>
+          <Text style={[styles.noLocTitle, { color: palette.text }]}>{t('dashboard.set_location_title')}</Text>
           <Text style={[styles.noLocBody, { color: palette.subtleText }]}>
-            Visit Settings &gt; Your Location to calculate today&apos;s prayer schedule.
+            {t('dashboard.set_location_body')}
           </Text>
           <Pressable
             accessibilityRole="button"
@@ -190,7 +192,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/(tabs)/settings' as any)}
             style={[styles.noLocButton, { backgroundColor: palette.accent }]}
           >
-            <Text style={[styles.noLocButtonLabel, { color: palette.background }]}>Open Settings</Text>
+            <Text style={[styles.noLocButtonLabel, { color: palette.background }]}>{t('dashboard.open_settings')}</Text>
           </Pressable>
         </View>
       </View>
@@ -218,8 +220,8 @@ export default function HomeScreen() {
   const currentTimeMinutes = getTimeZoneMinutes(fastNow, prayerDay.timeZone);
   const timeOfDayPhase = getTimeOfDayPhase(fastNow, prayerDay.timeZone);
   const reviewModeLabel = nextPrayer
-    ? `Reviewing ${prayerDay.gregorianDate} | upcoming prayers`
-    : `Reviewing ${prayerDay.gregorianDate} | past prayers`;
+    ? t('dashboard.reviewing_upcoming', { date: prayerDay.gregorianDate })
+    : t('dashboard.reviewing_past', { date: prayerDay.gregorianDate });
   const timeOfDaySymbol =
     timeOfDayPhase === 'day'
       ? {
@@ -242,32 +244,32 @@ export default function HomeScreen() {
       <View style={[styles.heroArea, { backgroundColor: palette.hero }]}>
         <View style={styles.heroTopRow}>
           <View style={styles.heroTextBlock}>
-            <Text style={[styles.heroGreeting, { color: palette.subtleText }]}>Assalam o Alykum, Welcome back</Text>
+            <Text style={[styles.heroGreeting, { color: palette.subtleText }]}>{t('dashboard.greeting')}</Text>
             <Text style={[styles.heroCurrentPrayer, { color: palette.text }]} data-testid="current-prayer-name">
-              {currentPrayer?.name ?? (nextPrayer ? nextPrayer.name : 'All done')}
+              {currentPrayer?.name ?? (nextPrayer ? nextPrayer.name : t('dashboard.all_done'))}
             </Text>
             <View style={styles.countdownBlockRow}>
                 <View style={[styles.countdownBlock, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <Text style={[styles.countdownBlockValue, { color: palette.gold }]}>{currentClock.hour}</Text>
-                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>HR</Text>
+                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>{t('common.hr')}</Text>
                 </View>
                 <Text style={[styles.countdownBlockColon, { color: palette.subtleText }]}>:</Text>
                 <View style={[styles.countdownBlock, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <Text style={[styles.countdownBlockValue, { color: palette.gold }]}>{currentClock.minuteLabel}</Text>
-                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>MIN</Text>
+                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>{t('common.min')}</Text>
                 </View>
                 <Text style={[styles.countdownBlockColon, { color: palette.subtleText }]}>:</Text>
                 <View style={[styles.countdownBlock, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <Text style={[styles.countdownBlockValue, { color: palette.gold }]}>{currentClock.secondLabel}</Text>
-                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>SEC</Text>
+                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>{t('common.sec')}</Text>
                 </View>
               <Text style={[styles.countdownUntil, { color: palette.subtleText }]}>
                 {currentClock.meridiem ? (
                   <>
-                    <Text style={{ color: palette.accent, fontWeight: '700' }}>{currentClock.meridiem}</Text> now
+                    <Text style={{ color: palette.accent, fontWeight: '700' }}>{currentClock.meridiem}</Text> {t('dashboard.now')}
                   </>
                 ) : (
-                  'local time'
+                  t('dashboard.local_time')
                 )}
               </Text>
             </View>
@@ -277,28 +279,28 @@ export default function HomeScreen() {
                   <Text style={[styles.countdownBlockValue, { color: palette.gold }]}>
                     {countdown.h.toString().padStart(2, '0')}
                   </Text>
-                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>HR</Text>
+                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>{t('common.hr')}</Text>
                 </View>
                 <Text style={[styles.countdownBlockColon, { color: palette.subtleText }]}>:</Text>
                 <View style={[styles.countdownBlock, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <Text style={[styles.countdownBlockValue, { color: palette.gold }]}>
                     {countdown.m.toString().padStart(2, '0')}
                   </Text>
-                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>MIN</Text>
+                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>{t('common.min')}</Text>
                 </View>
                 <Text style={[styles.countdownBlockColon, { color: palette.subtleText }]}>:</Text>
                 <View style={[styles.countdownBlock, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <Text style={[styles.countdownBlockValue, { color: palette.gold }]}>
                     {countdown.s.toString().padStart(2, '0')}
                   </Text>
-                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>SEC</Text>
+                  <Text style={[styles.countdownBlockLabel, { color: palette.subtleText }]}>{t('common.sec')}</Text>
                 </View>
                 <Text style={[styles.countdownUntil, { color: palette.subtleText }]}>
-                  to <Text style={{ color: palette.accent, fontWeight: '700' }}>{nextPrayer.name}</Text>
+                  {t('dashboard.to')} <Text style={{ color: palette.accent, fontWeight: '700' }}>{nextPrayer.name}</Text>
                 </Text>
               </View>
             ) : (
-              <Text style={[styles.heroCountdown, { color: palette.accent }]}>Alhamdulillah | all prayers done</Text>
+              <Text style={[styles.heroCountdown, { color: palette.accent }]}>{t('dashboard.alhamdulillah_done')}</Text>
             )}
           </View>
 
@@ -311,7 +313,7 @@ export default function HomeScreen() {
             <Text style={[styles.heroStatValue, { color: palette.accent }]}>
               {prayerMetrics.completedToday}/{prayerMetrics.totalTrackablePrayers}
             </Text>
-            <Text style={[styles.heroStatLabel, { color: palette.subtleText }]}>today</Text>
+            <Text style={[styles.heroStatLabel, { color: palette.subtleText }]}>{t('common.today')}</Text>
           </View>
         </View>
 
@@ -342,7 +344,7 @@ export default function HomeScreen() {
 
       <View style={[styles.dateBar, { borderBottomColor: palette.border }]}>
         <View style={[styles.todayPill, { backgroundColor: palette.accentSoft, borderColor: palette.border }]}>
-          <Text style={[styles.todayPillText, { color: palette.accent }]}>TODAY</Text>
+          <Text style={[styles.todayPillText, { color: palette.accent }]}>{t('common.today').toUpperCase()}</Text>
         </View>
         <View style={styles.dateTextBlock}>
           <Text style={[styles.dateGregorian, { color: palette.text }]} data-testid="gregorian-date">
@@ -498,9 +500,9 @@ export default function HomeScreen() {
       <Modal visible={!!earlyCompletionPrayer} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[styles.modalTitle, { color: palette.text }]}>Praying early?</Text>
+            <Text style={[styles.modalTitle, { color: palette.text }]}>{t('dashboard.praying_early_title')}</Text>
             <Text style={[styles.modalBody, { color: palette.subtleText }]}>
-              {earlyCompletionPrayer} has not started yet. Are you completing it early due to a valid reason?
+              {t('dashboard.praying_early_body', { prayer: earlyCompletionPrayer })}
             </Text>
             <View style={styles.modalActions}>
               <Pressable
@@ -514,7 +516,7 @@ export default function HomeScreen() {
                   setEarlyCompletionPrayer(null);
                 }}
               >
-                <Text style={[styles.modalButtonText, { color: palette.background }]}>Traveling (Jam')</Text>
+                <Text style={[styles.modalButtonText, { color: palette.background }]}>{t('dashboard.traveling_jam')}</Text>
               </Pressable>
 
               <Pressable
@@ -528,14 +530,14 @@ export default function HomeScreen() {
                   setEarlyCompletionPrayer(null);
                 }}
               >
-                <Text style={[styles.modalButtonText, { color: palette.background }]}>Sick (Rukhsah)</Text>
+                <Text style={[styles.modalButtonText, { color: palette.background }]}>{t('dashboard.sick_rukhsah')}</Text>
               </Pressable>
 
               <Pressable
                 style={[styles.modalCancelButton, { borderColor: palette.border }]}
                 onPress={() => setEarlyCompletionPrayer(null)}
               >
-                <Text style={[styles.modalCancelText, { color: palette.text }]}>Cancel</Text>
+                <Text style={[styles.modalCancelText, { color: palette.text }]}>{t('common.cancel')}</Text>
               </Pressable>
             </View>
           </View>
@@ -562,11 +564,18 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 10px 20px rgba(0,0,0,0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 10,
+      },
+    }),
   },
   modalTitle: {
     fontSize: 20,

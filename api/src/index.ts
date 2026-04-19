@@ -24,6 +24,9 @@ import { apiConfig, apiConfigValidationErrors, createRuntimeStatus } from './con
 import { googleDriveAuthCompleteBodySchema, googleDriveAuthStartBodySchema, googleDriveBackupUpsertBodySchema, googleDriveExportDocumentBodySchema } from './google-drive/schema';
 import { buildRedirectUrl, GoogleDriveService } from './google-drive/service';
 import { createGoogleDriveAuthStore } from './google-drive/store';
+import { GoogleCalendarService } from './google-calendar/service';
+import { googleCalendarSyncBodySchema } from './google-calendar/schema';
+import { ContentService } from './content/service';
 import { ApiMosqueSearchService, MosqueSearchUnavailableError, type MosqueSearchService } from './mosques/service';
 import { createNotificationService, type NotificationService } from './notifications/service';
 import { createNotificationStore } from './notifications/store';
@@ -198,6 +201,8 @@ export function buildServer(options?: {
   enableNotificationWorker?: boolean;
   googleDriveService?: GoogleDriveService | null;
   mosqueSearchService?: MosqueSearchService;
+  googleCalendarService?: GoogleCalendarService;
+  contentService?: ContentService;
   notificationService?: NotificationService | null;
   rateLimit?: Partial<ApiRateLimitConfig>;
   stage?: RuntimeResponse['stage'];
@@ -208,6 +213,11 @@ export function buildServer(options?: {
   const effectiveStage = options?.stage ?? apiConfig.stage;
   const notificationService = options?.notificationService ?? createDefaultNotificationService();
   const googleDriveService = options?.googleDriveService ?? createDefaultGoogleDriveService();
+  const googleCalendarService = options?.googleCalendarService ?? new GoogleCalendarService(
+    { clientId: apiConfig.googleClientId, clientSecret: apiConfig.googleClientSecret },
+    createGoogleDriveAuthStore(apiConfig.databaseUrl),
+  );
+  const contentService = options?.contentService ?? new ContentService();
   const mosqueSearchService = options?.mosqueSearchService ?? createDefaultMosqueSearchService();
   const runtimeStatus = {
     ...createRuntimeStatus(apiConfig),
@@ -226,6 +236,14 @@ export function buildServer(options?: {
   }
 
   void app.register(cors, {
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'x-prayer-app-installation',
+      'x-prayer-app-session',
+      'x-prayer-app-platform',
+    ],
+    credentials: true,
     origin:
       effectiveStage === 'production' || effectiveStage === 'staging'
         ? apiConfig.allowedOrigins.length > 0
@@ -715,25 +733,93 @@ export function buildServer(options?: {
         }
       });
 
-      api.get('/overview', async (_, reply) => {
-        sendApiError(
-          reply,
-          501,
-          'not_implemented',
-          'Overview API is not implemented yet. Prayer times are real; Quran and dua APIs are still backlog work.',
-        );
+      api.post('/google/calendar/sync', async (request, reply) => {
+        const sessionToken = getSessionTokenFromHeaders(request.headers as Record<string, unknown>);
+
+        if (!sessionToken) {
+          sendApiError(reply, 401, 'missing_google_session', 'Google session token is required.');
+          return;
+        }
+
+        const bodyResult = googleCalendarSyncBodySchema.safeParse(request.body);
+        if (!bodyResult.success) {
+          sendApiError(
+            reply,
+            400,
+            'invalid_google_calendar_sync_payload',
+            'Invalid Calendar sync payload.',
+            bodyResult.error.flatten().fieldErrors,
+          );
+          return;
+        }
+
+        try {
+          return await googleCalendarService.syncEvents(sessionToken, bodyResult.data);
+        } catch (error) {
+          sendApiError(
+            reply,
+            error instanceof Error && error.message.includes('no longer available') ? 401 : 502,
+            'google_calendar_sync_failed',
+            error instanceof Error ? error.message : 'Unable to sync events to Google Calendar.',
+          );
+          return;
+        }
       });
 
-      api.get('/quran/featured', async (_, reply) => {
-        sendApiError(reply, 501, 'not_implemented', 'Quran API is not implemented yet.');
+      api.get('/overview', async () => {
+        return contentService.getOverview();
       });
 
-      api.get('/duas/collections', async (_, reply) => {
-        sendApiError(reply, 501, 'not_implemented', 'Dua API is not implemented yet.');
+      api.get('/quran/featured', async () => {
+        return contentService.getFeaturedQuran();
       });
 
-      api.get('/dashboard', async (_, reply) => {
-        sendApiError(reply, 501, 'not_implemented', 'Dashboard aggregation API is not implemented yet.');
+      api.get('/duas/collections', async () => {
+        return contentService.getDuaCollections();
+      });
+
+      api.get('/quran/chapter/:id', async (request, reply) => {
+        const { id } = request.params as { id: string };
+        const chapter = await contentService.getQuranChapter(Number(id));
+        if (!chapter) {
+          return reply.code(404).send(createApiErrorResponse('chapter_not_found', 'Quran chapter not found.'));
+        }
+        return chapter;
+      });
+
+      api.get('/duas/category/:slug', async (request, reply) => {
+        const { slug } = request.params as { slug: string };
+        const category = await contentService.getDuaCategory(slug);
+        if (!category) {
+          return reply.code(404).send(createApiErrorResponse('category_not_found', 'Dua category not found.'));
+        }
+        return category;
+      });
+
+      api.get('/hadith/books', async () => {
+        return contentService.getHadithBooks();
+      });
+
+      api.get('/hadith/book/:slug', async (request, reply) => {
+        const { slug } = request.params as { slug: string };
+        const book = await contentService.getHadithBookDetail(slug);
+        if (!book) {
+          return reply.code(404).send(createApiErrorResponse('book_not_found', 'Hadith book not found.'));
+        }
+        return book;
+      });
+
+      api.get('/hadith/chapter/:bookSlug/:chapterId', async (request, reply) => {
+        const { bookSlug, chapterId } = request.params as { bookSlug: string; chapterId: string };
+        return contentService.getHadithChapter(bookSlug, Number(chapterId));
+      });
+
+      api.get('/prayer-topics', async () => {
+        return contentService.getPrayerTopics();
+      });
+
+      api.get('/dashboard', async () => {
+        return contentService.getDashboard();
       });
     },
     { prefix: '/api' },
@@ -768,4 +854,10 @@ const isMain = entryFile ? import.meta.url === pathToFileURL(entryFile).href : f
 
 if (isMain) {
   void start();
+}
+
+export default async function handler(req: any, res: any) {
+  const app = buildServer();
+  await app.ready();
+  app.server.emit('request', req, res);
 }

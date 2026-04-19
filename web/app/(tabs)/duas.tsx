@@ -2,6 +2,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { router, type RelativePathString } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { SectionCard } from '@/src/components/SectionCard';
 import { useContentData } from '@/src/content/content-provider';
@@ -9,6 +10,7 @@ import type { DuaHomeSnapshot } from '@/src/content/types';
 import { useAppPalette } from '@/src/theme/palette';
 
 export default function DuasScreen() {
+  const { t } = useTranslation();
   const palette = useAppPalette();
   const isFocused = useIsFocused();
   const { duaSource, error, getDuaHomeSnapshot, isReady } = useContentData();
@@ -55,7 +57,7 @@ export default function DuasScreen() {
         <View style={styles.loadingState}>
           <ActivityIndicator color={palette.accent} size="large" />
           <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-            Preparing your duas
+            {t('duas.preparing')}
           </Text>
         </View>
       </ScrollView>
@@ -69,15 +71,15 @@ export default function DuasScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
-        <Text style={[styles.title, { color: palette.text }]}>Duas</Text>
+        <Text style={[styles.title, { color: palette.text }]}>{t('duas.title')}</Text>
         <Text style={[styles.copy, { color: palette.text }]}>
-          Supplication, remembrance, and personal practice.
+          {t('duas.subtitle')}
         </Text>
       </View>
 
-      <SectionCard title="Favorites" subtitle="Saved on this device">
+      <SectionCard title={t('duas.favorites_title')} subtitle={t('duas.favorites_subtitle')}>
         {isLoading ? (
-          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Loading favorites...</Text>
+          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>{t('duas.loading_favorites')}</Text>
         ) : homeSnapshot?.favoriteDuas.length ? (
           homeSnapshot.favoriteDuas.map((dua) => (
             <Pressable
@@ -91,21 +93,21 @@ export default function DuasScreen() {
                 {dua.arabicText}
               </Text>
               <Text style={[styles.favoriteTranslation, { color: palette.text }]} numberOfLines={2}>
-                {dua.translation || 'Translation unavailable'}
+                {dua.translation || t('duas.translation_unavailable')}
               </Text>
               <Text style={[styles.favoriteCounter, { color: palette.subtleText }]}>
-                Recited {dua.personalCount} {dua.personalCount === 1 ? 'time' : 'times'}
+                {t('duas.recited')} {dua.personalCount} {dua.personalCount === 1 ? t('duas.time') : t('duas.times')}
               </Text>
             </Pressable>
           ))
         ) : (
           <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-            No favorite duas yet. Save items from a category to keep them close.
+            {t('duas.no_favorites')}
           </Text>
         )}
       </SectionCard>
 
-      <SectionCard title="Categories" subtitle="Hisnul Muslim collection">
+      <SectionCard title={t('duas.categories_title')} subtitle={t('duas.categories_subtitle')}>
         {homeSnapshot?.categories.map((category) => (
           <Pressable
             key={category.slug}
@@ -116,7 +118,7 @@ export default function DuasScreen() {
             <View style={styles.categoryCopy}>
               <Text style={[styles.categoryTitle, { color: palette.text }]}>{category.title}</Text>
               <Text style={[styles.categorySubtitle, { color: palette.subtleText }]}>
-                Open the category and continue your personal count.
+                {t('duas.category_body')}
               </Text>
             </View>
             <Text style={[styles.categoryCount, { color: palette.text }]}>{category.itemCount}</Text>

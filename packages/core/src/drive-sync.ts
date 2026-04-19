@@ -2,6 +2,7 @@ import { getDefaultPrayerNotificationPreferences } from './notifications';
 import { getDefaultPrayerPreferences } from './prayer';
 import { createPrayerLogDay, trackablePrayerNames } from './tracking';
 import type {
+  AppThemeAccent,
   AppThemePreference,
   PrayerAppBackupPayload,
   PrayerLogDay,
@@ -14,6 +15,10 @@ export const syncEpochTimestamp = '1970-01-01T00:00:00.000Z';
 
 export function getDefaultThemePreference(): AppThemePreference {
   return 'system';
+}
+
+export function getDefaultThemeAccent(): AppThemeAccent {
+  return 'default';
 }
 
 export function createTimestampedValue<T>(value: T, updatedAt = new Date().toISOString()): TimestampedValue<T> {
@@ -36,6 +41,7 @@ export function createPrayerAppBackupPayload(input: {
   prayerLogs: TimestampedValue<PrayerLogStore>;
   prayerPreferences: TimestampedValue<PrayerAppBackupPayload['prayerPreferences']['value']>;
   savedLocation: TimestampedValue<PrayerAppBackupPayload['savedLocation']['value']>;
+  themeAccent: TimestampedValue<PrayerAppBackupPayload['themeAccent']['value']>;
   themePreference: TimestampedValue<AppThemePreference>;
 }): PrayerAppBackupPayload {
   const exportedAt =
@@ -45,6 +51,7 @@ export function createPrayerAppBackupPayload(input: {
       input.prayerLogs,
       input.prayerPreferences,
       input.savedLocation,
+      input.themeAccent,
       input.themePreference,
     ]);
 
@@ -54,6 +61,7 @@ export function createPrayerAppBackupPayload(input: {
     prayerLogs: input.prayerLogs,
     prayerPreferences: input.prayerPreferences,
     savedLocation: input.savedLocation,
+    themeAccent: input.themeAccent,
     themePreference: input.themePreference,
     version: prayerAppBackupVersion,
   };
@@ -151,6 +159,7 @@ export function mergePrayerAppBackupPayload(
     savedLocation: mergeTimestampedValue(local.savedLocation, remote.savedLocation, {
       preferNonNullOnEqual: true,
     }),
+    themeAccent: mergeTimestampedValue(local.themeAccent, remote.themeAccent),
     themePreference: mergeTimestampedValue(local.themePreference, remote.themePreference),
   });
 }
@@ -161,6 +170,10 @@ export function hasMeaningfulPrayerAppBackupData(backup: PrayerAppBackupPayload)
   }
 
   if (backup.themePreference.value !== getDefaultThemePreference()) {
+    return true;
+  }
+
+  if (backup.themeAccent.value !== getDefaultThemeAccent()) {
     return true;
   }
 

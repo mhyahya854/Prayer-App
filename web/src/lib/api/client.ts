@@ -1,6 +1,8 @@
 import type {
   ApiErrorResponse,
   ApiHealthResponse,
+  GoogleCalendarSyncRequest,
+  GoogleCalendarSyncResponse,
   GoogleDriveAuthCompleteRequest,
   GoogleDriveAuthCompleteResponse,
   GoogleDriveAuthStartRequest,
@@ -144,6 +146,20 @@ export function exportGoogleDriveDocument(
 ) {
   return apiRequest<GoogleDriveExportDocumentResponse>(
     '/api/google/drive/export-document',
+    {
+      body: JSON.stringify(payload),
+      method: 'POST',
+    },
+    sessionToken,
+  );
+}
+
+export function syncGoogleCalendarEvents(
+  sessionToken: string,
+  payload: GoogleCalendarSyncRequest,
+) {
+  return apiRequest<GoogleCalendarSyncResponse>(
+    '/api/google/calendar/sync',
     {
       body: JSON.stringify(payload),
       method: 'POST',

@@ -7,7 +7,8 @@
         "typecheck": "tsc --noEmit",
         "lint": "eslint app src --ext .ts,.tsx",
         "web": "expo start --web",
-        "start": "expo start"
+        "start": "expo start",
+        "build": "expo export --platform web"
     },
     "dependencies": {
         "@kazishariar/hisnul-muslim-data": "^1.0.2",
@@ -27,9 +28,12 @@
         "expo-status-bar": "~55.0.5",
         "expo-symbols": "~55.0.7",
         "expo-web-browser": "~55.0.13",
+        "i18next": "^26.0.6",
+        "i18next-browser-languagedetector": "^8.2.1",
         "quran-json": "^3.1.2",
         "react": "19.2.4",
         "react-dom": "19.2.4",
+        "react-i18next": "^17.0.4",
         "react-native": "0.83.4",
         "react-native-reanimated": "4.2.1",
         "react-native-safe-area-context": "~5.7.0",

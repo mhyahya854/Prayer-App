@@ -2,6 +2,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { router, type RelativePathString } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { SectionCard } from '@/src/components/SectionCard';
 import {
@@ -16,6 +17,7 @@ import { loadQuranScriptStyle, saveQuranScriptStyle } from '@/src/lib/storage/qu
 import { useAppPalette } from '@/src/theme/palette';
 
 export default function QuranScreen() {
+  const { t } = useTranslation();
   const palette = useAppPalette();
   const isFocused = useIsFocused();
   const { error, getQuranHomeSnapshot, isReady, quranSource, searchQuran } = useContentData();
@@ -130,7 +132,7 @@ export default function QuranScreen() {
         <View style={styles.loadingState}>
           <ActivityIndicator color={palette.accent} size="large" />
           <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-            Preparing your Quran
+            {t('quran.preparing')}
           </Text>
         </View>
       </ScrollView>
@@ -144,21 +146,21 @@ export default function QuranScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={[styles.hero, { backgroundColor: palette.hero, borderColor: palette.border }]}>
-        <Text style={[styles.title, { color: palette.text }]}>Quran</Text>
+        <Text style={[styles.title, { color: palette.text }]}>{t('quran.title')}</Text>
         <Text style={[styles.copy, { color: palette.text }]}>
-          Read, search, and save verses.
+          {t('quran.subtitle')}
         </Text>
         {lastRead ? (
           <>
             <Text style={[styles.heroMeta, { color: palette.subtleText }]}>
-              Continue from {lastRead.chapterTransliteration} {lastRead.verseId}
+              {t('quran.continue_from', { chapter: lastRead.chapterTransliteration, verse: lastRead.verseId })}
             </Text>
             <Pressable
               accessibilityRole="button"
               onPress={() => openChapter(lastRead.chapterId, lastRead.verseId)}
               style={[styles.primaryButton, { backgroundColor: palette.accent }]}
             >
-              <Text style={[styles.primaryButtonLabel, { color: palette.surface }]}>Continue reading</Text>
+              <Text style={[styles.primaryButtonLabel, { color: palette.surface }]}>{t('quran.continue_reading')}</Text>
             </Pressable>
           </>
         ) : (
@@ -167,13 +169,13 @@ export default function QuranScreen() {
             onPress={() => openChapter(1)}
             style={[styles.primaryButton, { backgroundColor: palette.accent }]}
           >
-            <Text style={[styles.primaryButtonLabel, { color: palette.surface }]}>Begin with Al-Fatihah</Text>
+            <Text style={[styles.primaryButtonLabel, { color: palette.surface }]}>{t('quran.begin_fatihah')}</Text>
           </Pressable>
         )}
       </View>
 
-      <SectionCard title="Search" subtitle="Find a surah, verse, or phrase">
-        <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Arabic script style</Text>
+      <SectionCard title={t('quran.search_title')} subtitle={t('quran.search_subtitle')}>
+        <Text style={[styles.helperCopy, { color: palette.subtleText }]}>{t('quran.arabic_script_style')}</Text>
         <View style={styles.scriptRow}>
           {quranScriptStyleOptions.map((option) => {
             const isActive = option.id === scriptStyle;
@@ -198,9 +200,9 @@ export default function QuranScreen() {
           })}
         </View>
         <TextInput
-          accessibilityLabel="Search Quran"
+          accessibilityLabel={t('quran.search_title')}
           onChangeText={setSearchQuery}
-          placeholder="Search mercy, Fatiha, or verse"
+          placeholder={t('quran.search_placeholder')}
           placeholderTextColor={palette.subtleText}
           style={[
             styles.searchInput,
@@ -213,11 +215,11 @@ export default function QuranScreen() {
           value={searchQuery}
         />
         {isSearching ? (
-          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Searching...</Text>
+          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>{t('quran.searching')}</Text>
         ) : null}
         {!isSearching && searchQuery.trim() && searchResults.length === 0 ? (
           <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-            No results found.
+            {t('quran.no_results')}
           </Text>
         ) : null}
         {searchResults.map((result) => (
@@ -233,7 +235,7 @@ export default function QuranScreen() {
               </Text>
               <View style={[styles.badge, { backgroundColor: palette.accentSoft }]}>
                 <Text style={[styles.badgeLabel, { color: palette.accent }]}>
-                  {result.matchType === 'chapter' ? 'Surah' : 'Verse'}
+                  {result.matchType === 'chapter' ? t('quran.surah_badge') : t('quran.verse_badge')}
                 </Text>
               </View>
             </View>
@@ -252,9 +254,9 @@ export default function QuranScreen() {
         ))}
       </SectionCard>
 
-      <SectionCard title="Saved verses" subtitle="Bookmarks on this device">
+      <SectionCard title={t('quran.saved_verses')} subtitle={t('quran.bookmarks_subtitle')}>
         {isLoading ? (
-          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>Loading bookmarks...</Text>
+          <Text style={[styles.helperCopy, { color: palette.subtleText }]}>{t('quran.loading_bookmarks')}</Text>
         ) : homeSnapshot?.bookmarks.length ? (
           homeSnapshot.bookmarks.map((bookmark) => (
             <Pressable
@@ -276,12 +278,12 @@ export default function QuranScreen() {
           ))
         ) : (
           <Text style={[styles.helperCopy, { color: palette.subtleText }]}>
-            No bookmarks yet. Save verses from the reader to keep them close.
+            {t('quran.no_bookmarks')}
           </Text>
         )}
       </SectionCard>
 
-      <SectionCard title="All surahs" subtitle="Full offline chapter list">
+      <SectionCard title={t('quran.all_surahs')} subtitle={t('quran.all_surahs_subtitle')}>
         {homeSnapshot?.chapters.map((chapter) => (
           <Pressable
             key={chapter.chapterId}
@@ -299,7 +301,7 @@ export default function QuranScreen() {
             </View>
             <View style={styles.chapterMeta}>
               <Text style={[styles.chapterArabic, { color: palette.text }]}>{chapter.arabicName}</Text>
-              <Text style={[styles.chapterVerseCount, { color: palette.subtleText }]}>{chapter.totalVerses} ayat</Text>
+              <Text style={[styles.chapterVerseCount, { color: palette.subtleText }]}>{chapter.totalVerses} {t('quran.ayat')}</Text>
             </View>
           </Pressable>
         ))}

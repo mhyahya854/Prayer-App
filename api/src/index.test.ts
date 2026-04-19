@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createSavedLocation, getDefaultPrayerNotificationPreferences, getDefaultPrayerPreferences } from '@prayer-app/core';
 
 import { buildServer } from './index';
+import { BadRequestError } from './errors';
 import type { MosqueSearchService } from './mosques/service';
 import type { NotificationService } from './notifications/service';
 
@@ -323,4 +324,73 @@ test('invalid mosque queries return the shared 400 envelope', async (t) => {
 
   assert.equal(response.statusCode, 400);
   assert.equal(payload.error.code, 'invalid_mosque_query');
+});
+
+test('ApiError instances are serialized by global handler', async (t) => {
+  const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
+    notificationService: createNotificationServiceStub(),
+  });
+
+  app.get('/__test/bad-request', async () => {
+    throw new BadRequestError('test bad request', 'test_bad_request', { some: 'detail' });
+  });
+
+  t.after(async () => {
+    await app.close();
+  });
+
+  const response = await app.inject({ method: 'GET', url: '/__test/bad-request' });
+  const payload = response.json();
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(payload.error.code, 'test_bad_request');
+  assert.equal(payload.error.message, 'test bad request');
+  assert.deepEqual(payload.error.details, { some: 'detail' });
+});
+
+test('Unhandled errors map to 500 and generic message', async (t) => {
+  const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
+    notificationService: createNotificationServiceStub(),
+  });
+
+  app.get('/__test/unexpected', async () => {
+    throw new Error('boom');
+  });
+
+  t.after(async () => {
+    await app.close();
+  });
+
+  const response = await app.inject({ method: 'GET', url: '/__test/unexpected' });
+  const payload = response.json();
+
+  assert.equal(response.statusCode, 500);
+  assert.equal(payload.error.code, 'internal_error');
+  assert.equal(payload.error.message, 'Unexpected server error.');
+});
+
+test('Legacy rate-limit style errors map to 429 envelope', async (t) => {
+  const app = buildServer({
+    mosqueSearchService: createMosqueSearchServiceStub(),
+    notificationService: createNotificationServiceStub(),
+  });
+
+  app.get('/__test/rate', async () => {
+    throw { statusCode: 429, max: 3, ttl: 1500 } as unknown;
+  });
+
+  t.after(async () => {
+    await app.close();
+  });
+
+  const response = await app.inject({ method: 'GET', url: '/__test/rate' });
+  const payload = response.json();
+
+  assert.equal(response.statusCode, 429);
+  assert.equal(payload.error.code, 'rate_limited');
+  assert.equal(payload.error.message, 'Too many API requests. Please try again shortly.');
+  assert.equal(payload.error.details.max, 3);
+  assert.equal(payload.error.details.retryAfterMs, 1500);
 });

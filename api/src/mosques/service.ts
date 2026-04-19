@@ -3,6 +3,7 @@ import type {
   MosqueSearchResult,
   MosqueSource,
 } from '@prayer-app/core';
+import { ApiError, ServiceUnavailableError } from '../errors';
 
 export interface MosqueSearchParams {
   latitude: number;
@@ -54,12 +55,12 @@ interface CachedMosqueResponse {
   response: MosqueSearchResponse;
 }
 
-export class MosqueSearchUnavailableError extends Error {
+export class MosqueSearchUnavailableError extends ApiError {
   constructor(
     message: string,
     readonly details: MosqueSearchResponse,
   ) {
-    super(message);
+    super(message, { statusCode: 502, code: 'mosque_search_unavailable', details });
     this.name = 'MosqueSearchUnavailableError';
   }
 }
@@ -203,7 +204,11 @@ export class ApiMosqueSearchService implements MosqueSearchService {
       );
 
       if (payload.status && payload.status !== 'OK' && payload.status !== 'ZERO_RESULTS') {
-        throw new Error(`Google Places returned ${payload.status}.`);
+        throw new ServiceUnavailableError(
+          `Google Places returned ${payload.status}.`,
+          'google_places_error',
+          { status: payload.status },
+        );
       }
 
       const results: MosqueSearchResult[] = [];
@@ -338,9 +343,22 @@ out center tags;`;
       }
     }
 
-    throw lastError instanceof Error
-      ? lastError
-      : new Error(`${sourceLabel} search is unavailable right now.`);
+    if (lastError instanceof ApiError) {
+      throw lastError;
+    }
+
+    if (lastError instanceof Error) {
+      throw new ServiceUnavailableError(
+        `${sourceLabel} search is unavailable right now.`,
+        `${sourceLabel.toLowerCase().replace(/\s+/g, '_')}_unavailable`,
+        { source: sourceLabel, originalError: lastError.message },
+      );
+    }
+
+    throw new ServiceUnavailableError(
+      `${sourceLabel} search is unavailable right now.`,
+      `${sourceLabel.toLowerCase().replace(/\s+/g, '_')}_unavailable`,
+    );
   }
 
   private async fetchWithTimeout(url: string, init?: RequestInit) {

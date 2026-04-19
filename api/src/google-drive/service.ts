@@ -15,6 +15,7 @@ import type {
   StoredGoogleAccount,
   StoredGoogleDriveSession,
 } from './store';
+import { throwIfInvalid, BadRequestError, UnauthorizedError, ApiError, ServiceUnavailableError } from '../errors';
 
 const googleAuthBaseUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
 const googleTokenUrl = 'https://oauth2.googleapis.com/token';
@@ -74,7 +75,7 @@ async function ensureGoogleResponse(response: Response, fallbackMessage: string)
   }
 
   const errorMessage = await readGoogleError(response);
-  throw new Error(`${fallbackMessage} ${errorMessage}`.trim());
+  throw new ApiError(`${fallbackMessage} ${errorMessage}`.trim(), { statusCode: 502, code: 'google_api_error', details: { status: response.status } });
 }
 
 function buildMultipartPayload(metadata: Record<string, unknown>, payload: PrayerAppBackupPayload) {
@@ -115,7 +116,7 @@ export class GoogleDriveService {
 
   async startAuth(request: GoogleDriveAuthStartRequest): Promise<GoogleDriveAuthStartResponse> {
     if (!this.isConfigured()) {
-      throw new Error('Google Drive sync is not configured on the server.');
+      throw new ServiceUnavailableError('Google Drive sync is not configured on the server.');
     }
 
     const state = createStateToken();
@@ -172,15 +173,15 @@ export class GoogleDriveService {
     state: string;
   }) {
     if (!this.isConfigured()) {
-      throw new Error('Google Drive sync is not configured on the server.');
+      throw new ServiceUnavailableError('Google Drive sync is not configured on the server.');
     }
 
     if (params.error) {
-      throw new Error(params.errorDescription ?? params.error);
+      throw new BadRequestError(params.errorDescription ?? String(params.error));
     }
 
     if (!params.code) {
-      throw new Error('Google did not return an authorization code.');
+      throw new BadRequestError('Google did not return an authorization code.');
     }
 
     const tokenResponse = await fetch(googleTokenUrl, {
@@ -203,7 +204,7 @@ export class GoogleDriveService {
       refresh_token?: string;
     };
     if (!tokenPayload.access_token) {
-      throw new Error('Google token exchange returned no access token.');
+      throw new ApiError('Google token exchange returned no access token.', { statusCode: 502, code: 'google_token_exchange_failed' });
     }
 
     const userInfoResponse = await fetch(googleUserInfoUrl, {
@@ -221,13 +222,13 @@ export class GoogleDriveService {
     };
 
     if (!userInfo.sub || !userInfo.email) {
-      throw new Error('Google profile response was missing the account identity.');
+      throw new ApiError('Google profile response was missing the account identity.', { statusCode: 502, code: 'google_profile_missing' });
     }
 
     const existingAccount = await this.store.getAccount(userInfo.sub);
     const refreshToken = tokenPayload.refresh_token ?? existingAccount?.refreshToken;
     if (!refreshToken) {
-      throw new Error('Google did not return a refresh token for this account.');
+      throw new ApiError('Google did not return a refresh token for this account.', { statusCode: 502, code: 'google_no_refresh_token' });
     }
 
     const account: StoredGoogleAccount = {
@@ -245,7 +246,7 @@ export class GoogleDriveService {
     });
 
     if (!redirectUri) {
-      throw new Error('The Google auth request expired before it could be completed.');
+      throw new BadRequestError('The Google auth request expired before it could be completed.', 'google_auth_expired');
     }
 
     return redirectUri;
@@ -293,13 +294,10 @@ export class GoogleDriveService {
     });
     await ensureGoogleResponse(response, 'Unable to download the Drive backup.');
 
-    const parsed = prayerAppBackupPayloadSchema.safeParse(await response.json());
-    if (!parsed.success) {
-      throw new Error('The Drive backup file is not in the expected format.');
-    }
+    const parsed = throwIfInvalid<PrayerAppBackupPayload>(prayerAppBackupPayloadSchema.safeParse(await response.json()), { code: 'invalid_drive_backup_format', message: 'The Drive backup file is not in the expected format.' });
 
     return {
-      backup: parsed.data,
+      backup: parsed,
       fileId: file.id,
       modifiedAt: file.modifiedTime,
     };
@@ -327,7 +325,7 @@ export class GoogleDriveService {
         await ensureGoogleResponse(copyResponse, 'Unable to snapshot existing Drive backup before upsert.');
       } catch (err) {
         // Fail-fast: do not overwrite remote backup if we cannot preserve a snapshot.
-        throw new Error('Unable to create a snapshot of the existing backup. Aborting upload to avoid data loss.');
+        throw new ApiError('Unable to create a snapshot of the existing backup. Aborting upload to avoid data loss.', { statusCode: 502, code: 'drive_snapshot_failed' });
       }
     }
     const { body, boundary } = buildMultipartPayload(
@@ -496,7 +494,7 @@ export class GoogleDriveService {
     };
 
     if (!payload.access_token) {
-      throw new Error('Google did not return a refreshed access token.');
+      throw new ApiError('Google did not return a refreshed access token.', { statusCode: 502, code: 'google_no_access_token' });
     }
 
     return payload.access_token;
@@ -506,7 +504,7 @@ export class GoogleDriveService {
     const session = await this.store.getSession(sessionToken);
 
     if (!session) {
-      throw new Error('The Google Drive session is no longer available. Sign in again.');
+      throw new UnauthorizedError('The Google Drive session is no longer available. Sign in again.', 'google_session_missing');
     }
 
     return session;

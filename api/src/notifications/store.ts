@@ -22,6 +22,7 @@ import {
   pushDeliveryJobs,
   webPushSubscriptions,
 } from './schema';
+import { RateLimitError, BadRequestError, ServiceUnavailableError } from '../errors';
 
 export interface StoredInstallationProfile {
   installationId: string;
@@ -98,15 +99,15 @@ class MemoryNotificationStore implements NotificationStore {
     const maxJobs = Number(process.env.NOTIFICATION_MAX_PENDING_JOBS_PER_INSTALLATION ?? '500');
     const maxPayloadBytes = Number(process.env.NOTIFICATION_MAX_PAYLOAD_BYTES ?? '4096');
 
-    if (jobs.length > maxJobs) {
-      throw new Error('too many_pending_notification_jobs');
-    }
+        if (jobs.length > maxJobs) {
+          throw new RateLimitError('Too many pending notification jobs', { max: maxJobs });
+        }
 
     for (const job of jobs) {
       const payloadSize = Buffer.byteLength(JSON.stringify(job.payload), 'utf8');
-      if (payloadSize > maxPayloadBytes) {
-        throw new Error('notification_payload_too_large');
-      }
+          if (payloadSize > maxPayloadBytes) {
+            throw new BadRequestError('Notification payload too large', 'notification_payload_too_large');
+          }
     }
 
     for (const [dedupeKey, job] of this.jobs.entries()) {
@@ -318,15 +319,15 @@ class PostgresNotificationStore implements NotificationStore {
     const maxJobs = Number(process.env.NOTIFICATION_MAX_PENDING_JOBS_PER_INSTALLATION ?? '500');
     const maxPayloadBytes = Number(process.env.NOTIFICATION_MAX_PAYLOAD_BYTES ?? '4096');
 
-    if (jobs.length > maxJobs) {
-      throw new Error('too many_pending_notification_jobs');
-    }
+        if (jobs.length > maxJobs) {
+          throw new RateLimitError('Too many pending notification jobs', { max: maxJobs });
+        }
 
     for (const job of jobs) {
       const payloadSize = Buffer.byteLength(JSON.stringify(job.payload), 'utf8');
-      if (payloadSize > maxPayloadBytes) {
-        throw new Error('notification_payload_too_large');
-      }
+          if (payloadSize > maxPayloadBytes) {
+            throw new BadRequestError('Notification payload too large', 'notification_payload_too_large');
+          }
     }
 
     await this.database
@@ -462,10 +463,10 @@ export function createNotificationStore(
   const stage = options.stage ?? 'development';
   const allowMemoryFallback = options.allowMemoryFallback ?? stage === 'development';
 
-  if (!databaseUrl) {
-    if (!allowMemoryFallback) {
-      throw new Error(`DATABASE_URL is required in ${stage} for durable notification storage.`);
-    }
+        if (!databaseUrl) {
+          if (!allowMemoryFallback) {
+            throw new ServiceUnavailableError(`DATABASE_URL is required in ${stage} for durable notification storage.`);
+          }
 
     return new MemoryNotificationStore();
   }

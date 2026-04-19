@@ -21,6 +21,8 @@ import { Pool } from 'pg';
 import { z } from 'zod';
 
 import { apiConfig, apiConfigValidationErrors, createRuntimeStatus } from './config';
+import { requireGoogleSession } from './auth';
+import { ApiError, RateLimitError, isApiError, throwIfInvalid } from './errors';
 import { googleDriveAuthCompleteBodySchema, googleDriveAuthStartBodySchema, googleDriveBackupUpsertBodySchema, googleDriveExportDocumentBodySchema } from './google-drive/schema';
 import { buildRedirectUrl, GoogleDriveService } from './google-drive/service';
 import { createGoogleDriveAuthStore } from './google-drive/store';
@@ -81,6 +83,19 @@ const googleDriveCallbackQuerySchema = z.object({
   error: z.string().trim().min(1).optional(),
   error_description: z.string().trim().min(1).optional(),
   state: z.string().trim().min(1),
+});
+
+const idParamSchema = z.object({
+  id: z.string().regex(/^\d+$/, 'must be a numeric id'),
+});
+
+const slugParamSchema = z.object({
+  slug: z.string().trim().min(1).max(200),
+});
+
+const bookChapterParamsSchema = z.object({
+  bookSlug: z.string().trim().min(1).max(200),
+  chapterId: z.string().regex(/^\d+$/, 'must be a numeric chapter id'),
 });
 
 interface ApiRateLimitConfig {
@@ -254,61 +269,60 @@ export function buildServer(options?: {
         : true,
   });
   app.setErrorHandler((error, request, reply) => {
-    const rawStatusCode = getErrorProperty(error, 'statusCode');
-    const rawCode = getErrorProperty(error, 'code');
-    const rawMessage = getErrorProperty(error, 'message');
-    const rawMax = getErrorProperty(error, 'max');
-    const rawTtl = getErrorProperty(error, 'ttl');
-    const statusCode = typeof rawStatusCode === 'number' && rawStatusCode >= 400 ? rawStatusCode : 500;
-    const isRateLimited = statusCode === 429;
-    const isClientError = statusCode >= 400 && statusCode < 500;
+    // Prefer structured ApiError instances
+    if (isApiError(error)) {
+      const { statusCode, code, message, details } = error;
 
-    const errorCode = isRateLimited
-      ? 'rate_limited'
-      : typeof rawCode === 'string'
-        ? rawCode
-        : isClientError
-          ? 'bad_request'
-          : 'internal_error';
+      if (statusCode >= 500) {
+        request.log.error({ err: error, method: request.method, url: request.url }, `Unhandled server error: ${message}`);
+      } else {
+        request.log.info({ code, method: request.method, statusCode, url: request.url }, `API ${statusCode} response: ${message}`);
+      }
 
-    const message = isRateLimited
-      ? 'Too many API requests. Please try again shortly.'
-      : statusCode >= 500
-        ? 'Unexpected server error.'
-        : typeof rawMessage === 'string'
-          ? rawMessage
-          : 'Request failed.';
-
-    const details = isRateLimited
-      ? {
-          ...(typeof rawMax === 'number' ? { max: rawMax } : {}),
-          ...(typeof rawTtl === 'number' ? { retryAfterMs: rawTtl } : {}),
-        }
-      : undefined;
-
-    // Enhanced logging for server-side troubleshooting
-    if (statusCode >= 500) {
-      request.log.error(
-        {
-          err: error,
-          method: request.method,
-          url: request.url,
-        },
-        `Unhandled server error: ${message}`,
-      );
-    } else {
-      request.log.info(
-        {
-          code: errorCode,
-          method: request.method,
-          statusCode,
-          url: request.url,
-        },
-        `API ${statusCode} response: ${message}`,
-      );
+      reply.code(statusCode).send(createApiErrorResponse(code, message, details));
+      return;
     }
 
-    reply.code(statusCode).send(createApiErrorResponse(errorCode, message, details));
+    // Zod validation errors should map to a stable validation envelope
+    if (error instanceof z.ZodError) {
+      const flattened = error.flatten();
+      request.log.info({ method: request.method, url: request.url, validation: flattened.fieldErrors }, 'Validation error');
+      reply.code(400).send(createApiErrorResponse('validation_error', 'Invalid request payload.', flattened.fieldErrors));
+      return;
+    }
+
+    // Legacy / third-party errors (rate-limiting middleware) may expose statusCode, max, ttl
+    const rawStatusCode = getErrorProperty(error, 'statusCode');
+    const statusCode = typeof rawStatusCode === 'number' && rawStatusCode >= 400 ? rawStatusCode : 500;
+
+    if (statusCode === 429) {
+      const rawMax = getErrorProperty(error, 'max');
+      const rawTtl = getErrorProperty(error, 'ttl');
+      const details = {
+        ...(typeof rawMax === 'number' ? { max: rawMax } : {}),
+        ...(typeof rawTtl === 'number' ? { retryAfterMs: rawTtl } : {}),
+      };
+
+      request.log.info({ code: 'rate_limited', method: request.method, statusCode, url: request.url }, 'API 429 response: Too many API requests.');
+      reply.code(429).send(createApiErrorResponse('rate_limited', 'Too many API requests. Please try again shortly.', Object.keys(details).length ? details : undefined));
+      return;
+    }
+
+    // Fallback: best-effort extraction for message/code
+    const rawCode = getErrorProperty(error, 'code');
+    const rawMessage = getErrorProperty(error, 'message');
+    const isClientError = statusCode >= 400 && statusCode < 500;
+
+    const errorCode = typeof rawCode === 'string' ? rawCode : isClientError ? 'bad_request' : 'internal_error';
+    const message = statusCode >= 500 ? 'Unexpected server error.' : typeof rawMessage === 'string' ? rawMessage : 'Request failed.';
+
+    if (statusCode >= 500) {
+      request.log.error({ err: error, method: request.method, url: request.url }, `Unhandled server error: ${message}`);
+    } else {
+      request.log.info({ code: errorCode, method: request.method, statusCode, url: request.url }, `API ${statusCode} response: ${message}`);
+    }
+
+    reply.code(statusCode).send(createApiErrorResponse(errorCode, message));
   });
 
   app.get('/health', async (): Promise<ApiHealthResponse> => ({
@@ -375,21 +389,9 @@ export function buildServer(options?: {
       });
 
       api.get('/prayers/today', async (request, reply): Promise<PrayerTimesResponse | void> => {
-        const queryResult = prayerQuerySchema.safeParse(request.query);
-
-        if (!queryResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_prayer_query',
-            'Invalid prayer calculation input.',
-            queryResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
+        const query = throwIfInvalid(prayerQuerySchema.safeParse(request.query), { code: 'invalid_prayer_query', message: 'Invalid prayer calculation input.' });
 
         const defaults = getDefaultPrayerPreferences();
-        const query = queryResult.data;
 
         return computePrayerDay({
           coordinates: {
@@ -418,21 +420,10 @@ export function buildServer(options?: {
       });
 
       api.get('/mosques/nearby', async (request, reply) => {
-        const queryResult = mosqueNearbyQuerySchema.safeParse(request.query);
-
-        if (!queryResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_mosque_query',
-            'Invalid mosque search input.',
-            queryResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
+        const query = throwIfInvalid(mosqueNearbyQuerySchema.safeParse(request.query), { code: 'invalid_mosque_query', message: 'Invalid mosque search input.' });
 
         try {
-          return await mosqueSearchService.searchNearby(queryResult.data);
+          return await mosqueSearchService.searchNearby(query);
         } catch (error) {
           if (error instanceof MosqueSearchUnavailableError) {
             sendApiError(
@@ -455,72 +446,28 @@ export function buildServer(options?: {
       });
 
       api.post('/notifications/web/sync', async (request, reply) => {
-        const bodyResult = notificationSyncBodySchema.safeParse(request.body);
+        const body = throwIfInvalid<NotificationSyncRequest>(notificationSyncBodySchema.safeParse(request.body), { code: 'invalid_notification_sync_request', message: 'Invalid web notification sync payload.' });
 
-        if (!bodyResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_notification_sync_request',
-            'Invalid web notification sync payload.',
-            bodyResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
-
-        return notificationService.syncWebPush(bodyResult.data as NotificationSyncRequest);
+        return notificationService.syncWebPush(body);
       });
 
       api.post('/notifications/web/refresh', async (request, reply) => {
-        const bodyResult = notificationRefreshBodySchema.safeParse(request.body);
+        const body = throwIfInvalid<NotificationRefreshRequest>(notificationRefreshBodySchema.safeParse(request.body), { code: 'invalid_notification_refresh_request', message: 'Invalid web notification refresh payload.' });
 
-        if (!bodyResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_notification_refresh_request',
-            'Invalid web notification refresh payload.',
-            bodyResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
-
-        return notificationService.refreshWebPush(bodyResult.data as NotificationRefreshRequest);
+        return notificationService.refreshWebPush(body);
       });
 
       api.post('/notifications/web/disable', async (request, reply) => {
-        const bodyResult = notificationDisableBodySchema.safeParse(request.body);
+        const body = throwIfInvalid<NotificationDisableRequest>(notificationDisableBodySchema.safeParse(request.body), { code: 'invalid_notification_disable_request', message: 'Invalid web notification disable payload.' });
 
-        if (!bodyResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_notification_disable_request',
-            'Invalid web notification disable payload.',
-            bodyResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
-
-        return notificationService.disableWebPush(bodyResult.data as NotificationDisableRequest);
+        return notificationService.disableWebPush(body);
       });
 
       api.post('/google/auth/start', async (request, reply) => {
-        const bodyResult = googleDriveAuthStartBodySchema.safeParse(request.body);
-
-        if (!bodyResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_google_auth_start_request',
-            'Invalid Google auth start payload.',
-            bodyResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
+        const body = throwIfInvalid<GoogleDriveAuthStartRequest>(googleDriveAuthStartBodySchema.safeParse(request.body), { code: 'invalid_google_auth_start_request', message: 'Invalid Google auth start payload.' });
 
         try {
-          return await googleDriveService.startAuth(bodyResult.data as GoogleDriveAuthStartRequest);
+          return await googleDriveService.startAuth(body);
         } catch (error) {
           sendApiError(
             reply,
@@ -533,32 +480,21 @@ export function buildServer(options?: {
       });
 
       api.get('/google/callback', async (request, reply) => {
-        const queryResult = googleDriveCallbackQuerySchema.safeParse(request.query);
+        const query = throwIfInvalid(googleDriveCallbackQuerySchema.safeParse(request.query), { code: 'invalid_google_callback_request', message: 'Invalid Google callback query.' });
 
-        if (!queryResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_google_callback_request',
-            'Invalid Google callback query.',
-            queryResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
-
-        const redirectUriForState = await googleDriveService.getRedirectUriForState(queryResult.data.state);
+        const redirectUriForState = await googleDriveService.getRedirectUriForState(query.state);
 
         try {
           const redirectUrl = await googleDriveService.finishAuthorization({
-            code: queryResult.data.code,
-            error: queryResult.data.error,
-            errorDescription: queryResult.data.error_description,
-            state: queryResult.data.state,
+            code: query.code,
+            error: query.error,
+            errorDescription: query.error_description,
+            state: query.state,
           });
 
           return reply.redirect(
             buildRedirectUrl(redirectUrl, {
-              state: queryResult.data.state,
+              state: query.state,
               status: 'success',
             }),
           );
@@ -576,7 +512,7 @@ export function buildServer(options?: {
           return reply.redirect(
             buildRedirectUrl(redirectUriForState, {
               error: error instanceof Error ? error.message : 'Google authentication failed.',
-              state: queryResult.data.state,
+              state: query.state,
               status: 'error',
             }),
           );
@@ -584,22 +520,9 @@ export function buildServer(options?: {
       });
 
       api.post('/google/auth/complete', async (request, reply) => {
-        const bodyResult = googleDriveAuthCompleteBodySchema.safeParse(request.body);
+        const body = throwIfInvalid<GoogleDriveAuthCompleteRequest>(googleDriveAuthCompleteBodySchema.safeParse(request.body), { code: 'invalid_google_auth_complete_request', message: 'Invalid Google auth completion payload.' });
 
-        if (!bodyResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_google_auth_complete_request',
-            'Invalid Google auth completion payload.',
-            bodyResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
-
-        const response = await googleDriveService.completeAuth(
-          bodyResult.data as GoogleDriveAuthCompleteRequest,
-        );
+        const response = await googleDriveService.completeAuth(body);
 
         if (!response) {
           sendApiError(
@@ -614,44 +537,30 @@ export function buildServer(options?: {
         return response;
       });
 
-      api.get('/google/session', async (request, reply) => {
-        const sessionToken = getSessionTokenFromHeaders(request.headers as Record<string, unknown>);
+      api.get('/google/session', { preHandler: [requireGoogleSession(googleDriveService)] }, async (request, _reply) => {
+        const attached = (request as any).prayerAppGoogleSession;
 
-        if (!sessionToken) {
-          sendApiError(reply, 401, 'missing_google_session', 'Google session token is required.');
-          return;
-        }
-
-        const session = await googleDriveService.getSession(sessionToken);
-        if (!session) {
-          sendApiError(reply, 401, 'invalid_google_session', 'Google session is no longer valid.');
-          return;
-        }
-
-        return session;
+        return {
+          account: {
+            email: attached.account.email,
+            name: attached.account.name,
+            pictureUrl: attached.account.pictureUrl,
+            subject: attached.account.subject,
+          },
+          connected: true,
+        };
       });
 
-      api.delete('/google/session', async (request, reply) => {
-        const sessionToken = getSessionTokenFromHeaders(request.headers as Record<string, unknown>);
-
-        if (!sessionToken) {
-          sendApiError(reply, 401, 'missing_google_session', 'Google session token is required.');
-          return;
-        }
-
+      api.delete('/google/session', { preHandler: [requireGoogleSession(googleDriveService)] }, async (request) => {
+        const sessionToken = (request as any).prayerAppGoogleSession.sessionToken;
         await googleDriveService.disconnect(sessionToken);
         return {
           connected: false,
         };
       });
 
-      api.get('/google/drive/backup', async (request, reply) => {
-        const sessionToken = getSessionTokenFromHeaders(request.headers as Record<string, unknown>);
-
-        if (!sessionToken) {
-          sendApiError(reply, 401, 'missing_google_session', 'Google session token is required.');
-          return;
-        }
+      api.get('/google/drive/backup', { preHandler: [requireGoogleSession(googleDriveService)] }, async (request, reply) => {
+        const sessionToken = (request as any).prayerAppGoogleSession.sessionToken;
 
         try {
           return await googleDriveService.fetchBackup(sessionToken);
@@ -666,30 +575,14 @@ export function buildServer(options?: {
         }
       });
 
-      api.put('/google/drive/backup', async (request, reply) => {
-        const sessionToken = getSessionTokenFromHeaders(request.headers as Record<string, unknown>);
-
-        if (!sessionToken) {
-          sendApiError(reply, 401, 'missing_google_session', 'Google session token is required.');
-          return;
-        }
-
-        const bodyResult = googleDriveBackupUpsertBodySchema.safeParse(request.body);
-        if (!bodyResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_google_drive_backup_payload',
-            'Invalid Drive backup payload.',
-            bodyResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
+      api.put('/google/drive/backup', { preHandler: [requireGoogleSession(googleDriveService)] }, async (request, reply) => {
+        const sessionToken = (request as any).prayerAppGoogleSession.sessionToken;
+        const body = throwIfInvalid<GoogleDriveBackupUpsertRequest>(googleDriveBackupUpsertBodySchema.safeParse(request.body), { code: 'invalid_google_drive_backup_payload', message: 'Invalid Drive backup payload.' });
 
         try {
           return await googleDriveService.upsertBackup(
             sessionToken,
-            (bodyResult.data as GoogleDriveBackupUpsertRequest).backup,
+            body.backup,
           );
         } catch (error) {
           sendApiError(
@@ -702,28 +595,12 @@ export function buildServer(options?: {
         }
       });
 
-      api.post('/google/drive/export-document', async (request, reply) => {
-        const sessionToken = getSessionTokenFromHeaders(request.headers as Record<string, unknown>);
-
-        if (!sessionToken) {
-          sendApiError(reply, 401, 'missing_google_session', 'Google session token is required.');
-          return;
-        }
-
-        const bodyResult = googleDriveExportDocumentBodySchema.safeParse(request.body);
-        if (!bodyResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_google_drive_export_payload',
-            'Invalid document export payload.',
-            bodyResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
+      api.post('/google/drive/export-document', { preHandler: [requireGoogleSession(googleDriveService)] }, async (request, reply) => {
+        const sessionToken = (request as any).prayerAppGoogleSession.sessionToken;
+        const body = throwIfInvalid(googleDriveExportDocumentBodySchema.safeParse(request.body), { code: 'invalid_google_drive_export_payload', message: 'Invalid document export payload.' });
 
         try {
-          return await googleDriveService.exportDocument(sessionToken, bodyResult.data);
+          return await googleDriveService.exportDocument(sessionToken, body);
         } catch (error) {
           sendApiError(
             reply,
@@ -735,28 +612,12 @@ export function buildServer(options?: {
         }
       });
 
-      api.post('/google/calendar/sync', async (request, reply) => {
-        const sessionToken = getSessionTokenFromHeaders(request.headers as Record<string, unknown>);
-
-        if (!sessionToken) {
-          sendApiError(reply, 401, 'missing_google_session', 'Google session token is required.');
-          return;
-        }
-
-        const bodyResult = googleCalendarSyncBodySchema.safeParse(request.body);
-        if (!bodyResult.success) {
-          sendApiError(
-            reply,
-            400,
-            'invalid_google_calendar_sync_payload',
-            'Invalid Calendar sync payload.',
-            bodyResult.error.flatten().fieldErrors,
-          );
-          return;
-        }
+      api.post('/google/calendar/sync', { preHandler: [requireGoogleSession(googleDriveService)] }, async (request, reply) => {
+        const sessionToken = (request as any).prayerAppGoogleSession.sessionToken;
+        const body = throwIfInvalid(googleCalendarSyncBodySchema.safeParse(request.body), { code: 'invalid_google_calendar_sync_payload', message: 'Invalid Calendar sync payload.' });
 
         try {
-          return await googleCalendarService.syncEvents(sessionToken, bodyResult.data);
+          return await googleCalendarService.syncEvents(sessionToken, body);
         } catch (error) {
           sendApiError(
             reply,
@@ -781,8 +642,10 @@ export function buildServer(options?: {
       });
 
       api.get('/quran/chapter/:id', async (request, reply) => {
-        const { id } = request.params as { id: string };
-        const chapter = await contentService.getQuranChapter(Number(id));
+        const params = throwIfInvalid<{ id: string }>(idParamSchema.safeParse(request.params), { code: 'invalid_quran_chapter_id', message: 'Invalid Quran chapter id.' });
+
+        const id = Number(params.id);
+        const chapter = await contentService.getQuranChapter(id);
         if (!chapter) {
           return reply.code(404).send(createApiErrorResponse('chapter_not_found', 'Quran chapter not found.'));
         }
@@ -790,8 +653,9 @@ export function buildServer(options?: {
       });
 
       api.get('/duas/category/:slug', async (request, reply) => {
-        const { slug } = request.params as { slug: string };
-        const category = await contentService.getDuaCategory(slug);
+        const params = throwIfInvalid<{ slug: string }>(slugParamSchema.safeParse(request.params), { code: 'invalid_dua_category_slug', message: 'Invalid dua category slug.' });
+
+        const category = await contentService.getDuaCategory(params.slug);
         if (!category) {
           return reply.code(404).send(createApiErrorResponse('category_not_found', 'Dua category not found.'));
         }
@@ -803,8 +667,9 @@ export function buildServer(options?: {
       });
 
       api.get('/hadith/book/:slug', async (request, reply) => {
-        const { slug } = request.params as { slug: string };
-        const book = await contentService.getHadithBookDetail(slug);
+        const params = throwIfInvalid<{ slug: string }>(slugParamSchema.safeParse(request.params), { code: 'invalid_hadith_book_slug', message: 'Invalid hadith book slug.' });
+
+        const book = await contentService.getHadithBookDetail(params.slug);
         if (!book) {
           return reply.code(404).send(createApiErrorResponse('book_not_found', 'Hadith book not found.'));
         }
@@ -812,8 +677,9 @@ export function buildServer(options?: {
       });
 
       api.get('/hadith/chapter/:bookSlug/:chapterId', async (request, reply) => {
-        const { bookSlug, chapterId } = request.params as { bookSlug: string; chapterId: string };
-        return contentService.getHadithChapter(bookSlug, Number(chapterId));
+        const params = throwIfInvalid<{ bookSlug: string; chapterId: string }>(bookChapterParamsSchema.safeParse(request.params), { code: 'invalid_hadith_chapter_params', message: 'Invalid hadith chapter parameters.' });
+
+        return contentService.getHadithChapter(params.bookSlug, Number(params.chapterId));
       });
 
       api.get('/prayer-topics', async () => {

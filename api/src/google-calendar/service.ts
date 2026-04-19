@@ -5,6 +5,7 @@ import type {
 } from '@prayer-app/core';
 
 import type { GoogleDriveAuthStore, StoredGoogleDriveSession } from '../google-drive/store';
+import { ApiError, UnauthorizedError } from '../errors';
 
 const calendarApiBaseUrl = 'https://www.googleapis.com/calendar/v3';
 const googleTokenUrl = 'https://oauth2.googleapis.com/token';
@@ -74,12 +75,12 @@ export class GoogleCalendarService {
     });
 
     if (!response.ok) {
-      throw new Error('Unable to refresh the Google access token for Calendar sync.');
+      throw new ApiError('Unable to refresh the Google access token for Calendar sync.', { statusCode: 502, code: 'google_token_refresh_failed' });
     }
 
     const payload = (await response.json()) as { access_token?: string };
     if (!payload.access_token) {
-      throw new Error('Google did not return a refreshed access token for Calendar sync.');
+      throw new ApiError('Google did not return a refreshed access token for Calendar sync.', { statusCode: 502, code: 'google_token_refresh_malformed' });
     }
 
     return payload.access_token;
@@ -88,7 +89,7 @@ export class GoogleCalendarService {
   private async requireSession(sessionToken: string): Promise<StoredGoogleDriveSession> {
     const session = await this.store.getSession(sessionToken);
     if (!session) {
-      throw new Error('The Google session is no longer available. Sign in again.');
+      throw new UnauthorizedError('The Google session is no longer available. Sign in again.', 'google_session_missing');
     }
     return session;
   }

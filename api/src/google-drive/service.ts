@@ -312,6 +312,24 @@ export class GoogleDriveService {
     const session = await this.requireSession(sessionToken);
     const accessToken = await this.refreshAccessToken(session.account.refreshToken);
     const existingFile = await this.findBackupFile(accessToken);
+    // Guardrail: snapshot existing backup before overwriting it to avoid silent data loss.
+    if (existingFile) {
+      try {
+        const snapshotName = `${backupFileName.replace('.json', '')}-snapshot-${Date.now().toString(36)}.json`;
+        const copyResponse = await fetch(`${driveApiBaseUrl}/${existingFile.id}/copy`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: snapshotName, parents: ['appDataFolder'] }),
+        });
+        await ensureGoogleResponse(copyResponse, 'Unable to snapshot existing Drive backup before upsert.');
+      } catch (err) {
+        // Fail-fast: do not overwrite remote backup if we cannot preserve a snapshot.
+        throw new Error('Unable to create a snapshot of the existing backup. Aborting upload to avoid data loss.');
+      }
+    }
     const { body, boundary } = buildMultipartPayload(
       existingFile
         ? {

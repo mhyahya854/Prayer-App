@@ -14,6 +14,8 @@ export interface StoredGoogleDriveSession {
   installationId: string;
   platform: AppPlatform;
   sessionToken: string;
+  // ISO timestamp when the session was created on the server
+  createdAt?: string;
 }
 
 interface PendingStateRecord {
@@ -91,6 +93,7 @@ class MemoryGoogleDriveAuthStore implements GoogleDriveAuthStore {
       installationId: record.installationId,
       platform: record.platform,
       sessionToken: input.sessionToken,
+      createdAt: new Date().toISOString(),
     });
     this.completedStates.set(input.state, {
       ...record,
@@ -111,7 +114,18 @@ class MemoryGoogleDriveAuthStore implements GoogleDriveAuthStore {
   }
 
   async getSession(sessionToken: string) {
-    return this.sessions.get(sessionToken) ?? null;
+    const session = this.sessions.get(sessionToken) ?? null;
+    if (!session) return null;
+
+    // Enforce TTL for in-memory sessions as a guardrail during Phase 0.
+    const ttlDays = Number(process.env.GOOGLE_SESSION_TTL_DAYS ?? '') || 30;
+    const ttlMs = ttlDays * 24 * 60 * 60 * 1000;
+    if (session.createdAt && Date.parse(session.createdAt) + ttlMs <= Date.now()) {
+      this.sessions.delete(sessionToken);
+      return null;
+    }
+
+    return session;
   }
 }
 
@@ -387,6 +401,15 @@ class PostgresGoogleDriveAuthStore implements GoogleDriveAuthStore {
       return null;
     }
 
+    // Enforce TTL for DB-backed sessions. Configurable via GOOGLE_SESSION_TTL_DAYS env var (default 30 days).
+    const ttlDays = Number(process.env.GOOGLE_SESSION_TTL_DAYS ?? '') || 30;
+    const ttlMs = ttlDays * 24 * 60 * 60 * 1000;
+    if (row.created_at && Date.parse(row.created_at) + ttlMs <= Date.now()) {
+      // session expired — delete it and return null
+      await this.pool.query(`DELETE FROM google_drive_sessions WHERE session_token = $1`, [sessionToken]);
+      return null;
+    }
+
     return {
       account: {
         email: row.email,
@@ -398,6 +421,7 @@ class PostgresGoogleDriveAuthStore implements GoogleDriveAuthStore {
       installationId: row.installation_id,
       platform: row.platform as AppPlatform,
       sessionToken: row.session_token,
+      createdAt: row.created_at as string,
     };
   }
 }

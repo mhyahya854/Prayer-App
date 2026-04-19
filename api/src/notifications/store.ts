@@ -94,6 +94,21 @@ class MemoryNotificationStore implements NotificationStore {
   }
 
   async replacePendingJobs(installationId: string, jobs: StoredPushJob[]) {
+    // Guardrails: cap number of pending jobs per installation and payload size.
+    const maxJobs = Number(process.env.NOTIFICATION_MAX_PENDING_JOBS_PER_INSTALLATION ?? '500');
+    const maxPayloadBytes = Number(process.env.NOTIFICATION_MAX_PAYLOAD_BYTES ?? '4096');
+
+    if (jobs.length > maxJobs) {
+      throw new Error('too many_pending_notification_jobs');
+    }
+
+    for (const job of jobs) {
+      const payloadSize = Buffer.byteLength(JSON.stringify(job.payload), 'utf8');
+      if (payloadSize > maxPayloadBytes) {
+        throw new Error('notification_payload_too_large');
+      }
+    }
+
     for (const [dedupeKey, job] of this.jobs.entries()) {
       if (job.installationId === installationId && job.status === 'pending') {
         this.jobs.delete(dedupeKey);
@@ -299,6 +314,20 @@ class PostgresNotificationStore implements NotificationStore {
 
   async replacePendingJobs(installationId: string, jobs: StoredPushJob[]) {
     await this.ensureSchema();
+    // Guardrails: cap number of pending jobs per installation and payload size.
+    const maxJobs = Number(process.env.NOTIFICATION_MAX_PENDING_JOBS_PER_INSTALLATION ?? '500');
+    const maxPayloadBytes = Number(process.env.NOTIFICATION_MAX_PAYLOAD_BYTES ?? '4096');
+
+    if (jobs.length > maxJobs) {
+      throw new Error('too many_pending_notification_jobs');
+    }
+
+    for (const job of jobs) {
+      const payloadSize = Buffer.byteLength(JSON.stringify(job.payload), 'utf8');
+      if (payloadSize > maxPayloadBytes) {
+        throw new Error('notification_payload_too_large');
+      }
+    }
 
     await this.database
       .delete(pushDeliveryJobs)

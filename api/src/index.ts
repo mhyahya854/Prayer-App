@@ -209,6 +209,8 @@ export function buildServer(options?: {
 }) {
   const app = Fastify({
     logger: true,
+    // Guardrail: limit request body size to prevent large blind uploads (1 MiB)
+    bodyLimit: 1_048_576,
   });
   const effectiveStage = options?.stage ?? apiConfig.stage;
   const notificationService = options?.notificationService ?? createDefaultNotificationService();

@@ -47,6 +47,18 @@ def normalize_text(value: str) -> str:
     return compact
 
 
+def sanitize_text(value: str, max_len: int = 10000) -> str:
+    """Sanitize free-text fields by normalizing whitespace, stripping HTML tags, and truncating."""
+    if not value:
+        return ""
+    s = normalize_text(value)
+    # Remove any HTML tags to avoid injecting markup into generated bundles
+    s = re.sub(r"<[^>]*?>", "", s)
+    if len(s) > max_len:
+        s = s[:max_len]
+    return s
+
+
 def text_fingerprint(value: str) -> str:
     normalized = normalize_text(value)
     if not normalized:
@@ -134,18 +146,18 @@ def merge_hadeethenc_rows(en_rows: dict[str, dict[str, Any]], ar_rows: dict[str,
         merged_rows.append(
             HadeethEncRow(
                 id=row_id,
-                hadith_text=en_row.get("hadith_text", "") or ar_row.get("hadith_text", ""),
-                title=en_row.get("title", "") or ar_row.get("title", ""),
-                explanation=en_row.get("explanation", ""),
-                explanation_ar=en_row.get("explanation_ar", "") or ar_row.get("explanation", ""),
-                benefits=en_row.get("benefits", ""),
-                benefits_ar=en_row.get("benefits_ar", "") or ar_row.get("benefits", ""),
-                word_meanings=ar_row.get("word_meanings", ""),
-                grade=en_row.get("grade", "") or ar_row.get("grade", ""),
-                grade_ar=en_row.get("grade_ar", "") or ar_row.get("grade", ""),
-                takhrij=en_row.get("takhrij", "") or ar_row.get("takhrij", ""),
-                takhrij_ar=en_row.get("takhrij_ar", "") or ar_row.get("takhrij", ""),
-                link=en_row.get("link", "") or ar_row.get("link", ""),
+                hadith_text=sanitize_text(en_row.get("hadith_text", "") or ar_row.get("hadith_text", "")),
+                title=sanitize_text(en_row.get("title", "") or ar_row.get("title", "")),
+                explanation=sanitize_text(en_row.get("explanation", "")),
+                explanation_ar=sanitize_text(en_row.get("explanation_ar", "") or ar_row.get("explanation", "")),
+                benefits=sanitize_text(en_row.get("benefits", "")),
+                benefits_ar=sanitize_text(en_row.get("benefits_ar", "") or ar_row.get("benefits", "")),
+                word_meanings=sanitize_text(ar_row.get("word_meanings", "")),
+                grade=sanitize_text(en_row.get("grade", "") or ar_row.get("grade", "")),
+                grade_ar=sanitize_text(en_row.get("grade_ar", "") or ar_row.get("grade", "")),
+                takhrij=sanitize_text(en_row.get("takhrij", "") or ar_row.get("takhrij", "")),
+                takhrij_ar=sanitize_text(en_row.get("takhrij_ar", "") or ar_row.get("takhrij", "")),
+                link=sanitize_text(en_row.get("link", "") or ar_row.get("link", "")),
             )
         )
     return merged_rows
@@ -232,21 +244,21 @@ def build_hadith_bundle(project_root: Path) -> dict[str, Any]:
                     "bookHadithNumber": int(hadith["idInBook"]),
                     "globalHadithId": int(hadith["id"]),
                     "chapterId": chapter_id,
-                    "chapterTitleArabic": chapter["titleArabic"] if chapter else "",
-                    "chapterTitleEnglish": chapter["titleEnglish"] if chapter else "",
-                    "narratorEnglish": narrator,
-                    "textArabic": str(hadith.get("arabic") or ""),
-                    "textEnglish": english_text,
-                    "grade": row.grade if row else "",
-                    "gradeArabic": row.grade_ar if row else "",
-                    "explanation": row.explanation if row else "",
-                    "explanationArabic": row.explanation_ar if row else "",
-                    "benefits": to_list(row.benefits) if row else [],
-                    "benefitsArabic": to_list(row.benefits_ar) if row else [],
-                    "wordMeaningsArabic": to_list(row.word_meanings) if row else [],
-                    "takhrij": row.takhrij if row else "",
-                    "takhrijArabic": row.takhrij_ar if row else "",
-                    "sourceLink": row.link if row else "",
+                    "chapterTitleArabic": sanitize_text(chapter["titleArabic"] if chapter else ""),
+                    "chapterTitleEnglish": sanitize_text(chapter["titleEnglish"] if chapter else ""),
+                    "narratorEnglish": sanitize_text(narrator),
+                    "textArabic": sanitize_text(str(hadith.get("arabic") or "")),
+                    "textEnglish": sanitize_text(english_text),
+                    "grade": sanitize_text(row.grade if row else ""),
+                    "gradeArabic": sanitize_text(row.grade_ar if row else ""),
+                    "explanation": sanitize_text(row.explanation if row else ""),
+                    "explanationArabic": sanitize_text(row.explanation_ar if row else ""),
+                    "benefits": [sanitize_text(p) for p in to_list(row.benefits) if p] if row else [],
+                    "benefitsArabic": [sanitize_text(p) for p in to_list(row.benefits_ar) if p] if row else [],
+                    "wordMeaningsArabic": [sanitize_text(p) for p in to_list(row.word_meanings) if p] if row else [],
+                    "takhrij": sanitize_text(row.takhrij if row else ""),
+                    "takhrijArabic": sanitize_text(row.takhrij_ar if row else ""),
+                    "sourceLink": sanitize_text(row.link if row else ""),
                     "hadeethEncId": row.id if row else None,
                     "isGradeVerified": bool(row and normalize_text(row.grade)),
                 }
